@@ -1,0 +1,30 @@
+{
+  "schema": "bogmem.golden_manifest.v1",
+  "module": "kg",
+  "pin_label": "a4747d7 (post-v3.5.0, code == HEAD b060dda)",
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "capture_tool_version": "1",
+  "frozen_now": "2026-01-01T00:00:00",
+  "tz": "UTC",
+  "platform": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "python": "3.9.6"
+  },
+  "dependency_versions": {
+    "chromadb": "1.5.9",
+    "numpy": "2.0.2",
+    "dateutil": "2.9.0.post0",
+    "autocorrect": "absent",
+    "yaml": "6.0.3",
+    "tokenizers": "0.22.2",
+    "huggingface_hub": "1.8.0",
+    "mempalace": "3.5.0"
+  },
+  "inputs_source": "mirrors KgParityTests' seed, executed by mempalace.knowledge_graph at the pin with the clock frozen to frozen_recorded_at",
+  "notes": "Replay contract: feed frozen_recorded_at as recordedAt for every add to reproduce ids. Volatile columns (created_at etc., SQLite CURRENT_TIMESTAMP) are excluded from rows on purpose.",
+  "files": {
+    "kg.json": "9595c124a1047e59a339f4e9378b6baceac17bd612d7d24f2c80aa1f4cc8fcca"
+  }
+}

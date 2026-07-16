@@ -1,0 +1,158 @@
+{
+  "schema": "bogmem.golden.dates.v1",
+  "legacy_commit": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "tz": "UTC",
+  "tier_enum": {
+    "filename": 1,
+    "frontmatter": 2,
+    "content_body": 3,
+    "mtime": 4,
+    "none": 5
+  },
+  "cases": [
+    {
+      "name": "filename_iso",
+      "source_file": "notes/2024-11-08-diary.md",
+      "content": "",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2024-11-08",
+      "expected_tier": 1
+    },
+    {
+      "name": "filename_natural",
+      "source_file": "notes/April-6th-2011-notes.md",
+      "content": "",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2011-04-06",
+      "expected_tier": 1
+    },
+    {
+      "name": "filename_nov",
+      "source_file": "notes/Nov-8-2024.md",
+      "content": "",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2024-11-08",
+      "expected_tier": 1
+    },
+    {
+      "name": "fuzzy_gate_junk_filename",
+      "source_file": "tmp_random_file_5.md",
+      "content": "Tested with 1000 drawers",
+      "mtime_epoch_utc": null,
+      "expected_iso": null,
+      "expected_tier": 5
+    },
+    {
+      "name": "fuzzy_gate_version",
+      "source_file": "Version-3.3.6.md",
+      "content": "no dates here",
+      "mtime_epoch_utc": null,
+      "expected_iso": null,
+      "expected_tier": 5
+    },
+    {
+      "name": "partial_year_only",
+      "source_file": "notes.2024.md",
+      "content": "",
+      "mtime_epoch_utc": null,
+      "expected_iso": null,
+      "expected_tier": 5
+    },
+    {
+      "name": "frontmatter_date",
+      "source_file": "plain.md",
+      "content": "---\ntitle: Hello\ndate: 2023-06-15\n---\nBody without date\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2023-06-15",
+      "expected_tier": 2
+    },
+    {
+      "name": "frontmatter_natural",
+      "source_file": "plain.md",
+      "content": "---\ncreated: November 8, 2024\n---\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2024-11-08",
+      "expected_tier": 2
+    },
+    {
+      "name": "body_iso",
+      "source_file": "plain.md",
+      "content": "Preface line\nPublished 2022-03-04 in the magazine.\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2022-03-04",
+      "expected_tier": 3
+    },
+    {
+      "name": "body_slash_ddmm",
+      "source_file": "plain.md",
+      "content": "Meeting notes 23/04/2021 for the board.\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2021-04-23",
+      "expected_tier": 3
+    },
+    {
+      "name": "body_natural_day_month",
+      "source_file": "plain.md",
+      "content": "Written on 8 November 2024 about GraphQL.\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2024-11-08",
+      "expected_tier": 3
+    },
+    {
+      "name": "body_natural_month_day",
+      "source_file": "plain.md",
+      "content": "November 8, 2024 \u2014 kickoff\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2024-11-08",
+      "expected_tier": 3
+    },
+    {
+      "name": "mtime",
+      "source_file": "no-date-file.md",
+      "content": "just some text without a complete date pattern",
+      "mtime_epoch_utc": 1577966400,
+      "expected_iso": "2020-01-02",
+      "expected_tier": 4
+    },
+    {
+      "name": "none",
+      "source_file": "nodate.md",
+      "content": "no temporal markers",
+      "mtime_epoch_utc": null,
+      "expected_iso": null,
+      "expected_tier": 5
+    },
+    {
+      "name": "filename_beats_body",
+      "source_file": "2025-01-01-override.md",
+      "content": "Actually written November 8, 2024\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2025-01-01",
+      "expected_tier": 1
+    },
+    {
+      "name": "frontmatter_beats_body",
+      "source_file": "x.md",
+      "content": "---\npublished: 2019-12-25\n---\nBody says 2020-01-01\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2019-12-25",
+      "expected_tier": 2
+    },
+    {
+      "name": "slash_lock_pair",
+      "source_file": "plain.md",
+      "content": "First 04/11/22 then later 25/03/21 in one file.\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2022-11-04",
+      "expected_tier": 3
+    },
+    {
+      "name": "slash_no_lock",
+      "source_file": "plain.md",
+      "content": "Only 04/11/22 appears here.\n",
+      "mtime_epoch_utc": null,
+      "expected_iso": "2022-04-11",
+      "expected_tier": 3
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "bogmem.golden_manifest.v1",
+  "module": "embedding",
+  "pin_label": "a4747d7 (post-v3.5.0, code == HEAD b060dda)",
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "capture_tool_version": "1",
+  "frozen_now": "2026-01-01T00:00:00",
+  "tz": "UTC",
+  "platform": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "python": "3.9.6"
+  },
+  "dependency_versions": {
+    "chromadb": "1.5.9",
+    "numpy": "2.0.2",
+    "dateutil": "2.9.0.post0",
+    "autocorrect": "absent",
+    "yaml": "6.0.3",
+    "tokenizers": "0.22.2",
+    "huggingface_hub": "1.8.0",
+    "mempalace": "3.5.0"
+  },
+  "inputs_source": "real CPU inference through mempalace.embedding.get_embedding_function() (chroma ONNXMiniLM_L6_V2)",
+  "notes": "Consumable only after the C# EmbeddingPipeline.Forward stub is replaced with real ONNX inference (run-007 work item); model bytes pinned by sha256 in golden/model/model_meta.json.",
+  "files": {
+    "vectors.json": "53bb05407d5a4cfcc6fd37bcbac647b0a0d34301f43c906286818b76186de7dd"
+  }
+}

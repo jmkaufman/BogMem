@@ -1,0 +1,30 @@
+{
+  "schema": "bogmem.golden_manifest.v1",
+  "module": "ids",
+  "pin_label": "a4747d7 (post-v3.5.0, code == HEAD b060dda)",
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "capture_tool_version": "1",
+  "frozen_now": "2026-01-01T00:00:00",
+  "tz": "UTC",
+  "platform": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "python": "3.9.6"
+  },
+  "dependency_versions": {
+    "chromadb": "1.5.9",
+    "numpy": "2.0.2",
+    "dateutil": "2.9.0.post0",
+    "autocorrect": "absent",
+    "yaml": "6.0.3",
+    "tokenizers": "0.22.2",
+    "huggingface_hub": "1.8.0",
+    "mempalace": "3.5.0"
+  },
+  "inputs_source": "mirrors IdCorpusGenerator.BuildInScopeRows (minus chunk_scheme); ids/preimages computed by mempalace.ids + palace_graph._canonical_tunnel_id at the pin",
+  "notes": "chunk_scheme (MakeChunkId sha24_{index}) has NO legacy analog at the pin \u2014 C#-side invention, excluded from frozen evidence; writers must cite a legacy source or drop the kind when switching the harness to FindGolden.",
+  "files": {
+    "table.json": "6b3dfd050ed3790516507e5b3432a556e51a06ba2c118da58c17eff82472f273"
+  }
+}
