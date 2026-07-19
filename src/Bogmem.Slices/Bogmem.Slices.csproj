@@ -12,5 +12,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="Mcp/tools.json" LogicalName="Bogmem.Slices.Mcp.tools.json" />
+    <EmbeddedResource Include="Spellcheck/data/word_count.en.json.gz" LogicalName="Bogmem.Slices.Spellcheck.data.word_count.en.json.gz" />
   </ItemGroup>
 </Project>

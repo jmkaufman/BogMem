@@ -1,0 +1,181 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "TestId": "dyn-basic-spaced",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-rapid-not-spaced",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-spaced-exactly-1h",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-just-under-1h",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-cap-hit",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-cap-exact",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-cap-then-decay",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-floor-hit",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-floor-near",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-z-suffix",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-offset-0530",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-naive-utc",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-micros",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-malformed-ts",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-no-time-passed",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-negative-elapsed",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-zero-stability",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-negative-stability",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-missing-fields",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-created-at-fallback",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-string-numbers",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    },
+    {
+      "TestId": "dyn-long-neglect",
+      "Module": "dynamics",
+      "Status": "converted",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S5b"
+    }
+  ]
+}
