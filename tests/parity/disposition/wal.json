@@ -2,20 +2,20 @@
   "schema": "ase.test_disposition_ledger.v1",
   "rows": [
     {
-      "TestId": "wal_jsonl_exact",
-      "Module": "wal",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S10"
+      "test_id": "wal_jsonl_exact",
+      "module": "wal",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S10"
     },
     {
-      "TestId": "wal_redaction",
-      "Module": "wal",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": "covered_by_golden",
-      "Slice": "S10"
+      "test_id": "wal_redaction",
+      "module": "wal",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "covered_by_golden",
+      "slice": "S10"
     }
   ]
 }
