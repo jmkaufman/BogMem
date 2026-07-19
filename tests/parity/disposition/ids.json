@@ -2,28 +2,28 @@
   "schema": "ase.test_disposition_ledger.v1",
   "rows": [
     {
-      "TestId": "ids_recipes_golden",
-      "Module": "ids",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S1"
+      "test_id": "ids_recipes_golden",
+      "module": "ids",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S1"
     },
     {
-      "TestId": "ids_codepoints",
-      "Module": "ids",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": "covered_by_golden",
-      "Slice": "S1"
+      "test_id": "ids_codepoints",
+      "module": "ids",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "covered_by_golden",
+      "slice": "S1"
     },
     {
-      "TestId": "ids_surrogatepass",
-      "Module": "ids",
-      "Status": "not_applicable",
-      "Rule": "EXACT",
-      "Reason": "deferred to S13",
-      "Slice": "S1"
+      "test_id": "ids_surrogatepass",
+      "module": "ids",
+      "status": "not_applicable",
+      "rule": "EXACT",
+      "reason": "deferred to S13",
+      "slice": "S1"
     }
   ]
 }

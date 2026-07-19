@@ -2,84 +2,84 @@
   "schema": "ase.test_disposition_ledger.v1",
   "rows": [
     {
-      "TestId": "config",
-      "Module": "ConfigResolver",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S8"
+      "test_id": "config",
+      "module": "ConfigResolver",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S8"
     },
     {
-      "TestId": "embedder",
-      "Module": "Embedder",
-      "Status": "pass",
-      "Rule": "ULP",
-      "Reason": null,
-      "Slice": "S3"
+      "test_id": "embedder",
+      "module": "Embedder",
+      "status": "pass",
+      "rule": "ULP",
+      "reason": null,
+      "slice": "S3"
     },
     {
-      "TestId": "chroma",
-      "Module": "ChromaStore",
-      "Status": "pass",
-      "Rule": "BOUNDED",
-      "Reason": null,
-      "Slice": "S6"
+      "test_id": "chroma",
+      "module": "ChromaStore",
+      "status": "pass",
+      "rule": "BOUNDED",
+      "reason": null,
+      "slice": "S7"
     },
     {
-      "TestId": "knowledge_graph",
-      "Module": "KnowledgeGraphStore",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S5c"
+      "test_id": "knowledge_graph",
+      "module": "KnowledgeGraphStore",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S5c"
     },
     {
-      "TestId": "ids",
-      "Module": "IdRecipes",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S1"
+      "test_id": "ids",
+      "module": "IdRecipes",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S1"
     },
     {
-      "TestId": "wal",
-      "Module": "WalWriter",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S10"
+      "test_id": "wal",
+      "module": "WalWriter",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S10"
     },
     {
-      "TestId": "search",
-      "Module": "Searcher",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S4"
+      "test_id": "search",
+      "module": "Searcher",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S4"
     },
     {
-      "TestId": "dedup",
-      "Module": "DedupGrouper",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S5a"
+      "test_id": "dedup",
+      "module": "DedupGrouper",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S5a"
     },
     {
-      "TestId": "mcp",
-      "Module": "McpServer",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S9"
+      "test_id": "mcp",
+      "module": "McpServer",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S9"
     },
     {
-      "TestId": "deferred_ids",
-      "Module": "DeferredIdOracle",
-      "Status": "not_applicable",
-      "Rule": "PLACEHOLDER",
-      "Reason": "oracle staged",
-      "Slice": "S13"
+      "test_id": "deferred_ids",
+      "module": "DeferredIdOracle",
+      "status": "not_applicable",
+      "rule": "PLACEHOLDER",
+      "reason": "oracle staged",
+      "slice": "S13"
     }
   ]
 }

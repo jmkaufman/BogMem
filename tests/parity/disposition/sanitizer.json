@@ -2,28 +2,28 @@
   "schema": "ase.test_disposition_ledger.v1",
   "rows": [
     {
-      "TestId": "sanitizer_executed_legacy_vectors",
-      "Module": "sanitizer",
-      "Status": "converted",
-      "Rule": "EXACT",
-      "Reason": "oracle = pinned legacy query_sanitizer.py executed at a4747d7 (testdata/sanitizer/); golden/sanitizer absent from vendored corpus and golden/ is read-only for run seats",
-      "Slice": "S4"
+      "test_id": "sanitizer_executed_legacy_vectors",
+      "module": "sanitizer",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": "oracle = pinned legacy query_sanitizer.py executed at a4747d7 (testdata/sanitizer/); golden/sanitizer absent from vendored corpus and golden/ is read-only for run seats",
+      "slice": "S4"
     },
     {
-      "TestId": "sanitizer_all_methods",
-      "Module": "sanitizer",
-      "Status": "converted",
-      "Rule": "EXACT",
-      "Reason": "passthrough/question_extraction/tail_sentence/tail_truncation all replayed",
-      "Slice": "S4"
+      "test_id": "sanitizer_all_methods",
+      "module": "sanitizer",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": "passthrough/question_extraction/tail_sentence/tail_truncation all replayed",
+      "slice": "S4"
     },
     {
-      "TestId": "sanitizer_lone_surrogates",
-      "Module": "sanitizer",
-      "Status": "converted",
-      "Rule": "EXACT",
-      "Reason": "#1235 U\u002BFFFD replacement covered via code-point vectors",
-      "Slice": "S4"
+      "test_id": "sanitizer_lone_surrogates",
+      "module": "sanitizer",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": "#1235 U\u002BFFFD replacement covered via code-point vectors",
+      "slice": "S4"
     }
   ]
 }

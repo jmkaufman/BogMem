@@ -2,20 +2,20 @@
   "schema": "ase.test_disposition_ledger.v1",
   "rows": [
     {
-      "TestId": "deferred_oracle_staged",
-      "Module": "deferred_ids",
-      "Status": "not_applicable",
-      "Rule": "PLACEHOLDER",
-      "Reason": "deferred pass, oracle staged",
-      "Slice": "S13"
+      "test_id": "deferred_oracle_staged",
+      "module": "deferred_ids",
+      "status": "not_applicable",
+      "rule": "PLACEHOLDER",
+      "reason": "deferred pass, oracle staged",
+      "slice": "S13"
     },
     {
-      "TestId": "deferred_uuid5_match",
-      "Module": "deferred_ids",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": "oracle matches golden vectors; no comparison pass",
-      "Slice": "S13"
+      "test_id": "deferred_uuid5_match",
+      "module": "deferred_ids",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "oracle matches golden vectors; no comparison pass",
+      "slice": "S13"
     }
   ]
 }
