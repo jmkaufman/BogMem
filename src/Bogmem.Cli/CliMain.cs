@@ -15,12 +15,12 @@ public static class CliMain
                 bogmem - parity harness
 
                 Commands:
-                  parity [module] [--golden path] [--report path]
+                  parity [module|all] [--golden path] [--report path]
                   --help
 
                 Exit codes: 0 = parity holds, 1 = parity mismatch, 2 = usage/corpus error
 
-                Modules: {string.Join(", ", ParityRunner.KnownModules)}
+                Modules: all, {string.Join(", ", ParityRunner.KnownModules)}
                 """);
             return 0;
         }
@@ -59,9 +59,9 @@ public static class CliMain
                 }
             }
             module ??= "config";
-            if (!ParityRunner.KnownModules.Contains(module))
+            if (module != "all" && !ParityRunner.KnownModules.Contains(module))
             {
-                stderr.WriteLine($"Unknown module '{module}'. Modules: {string.Join(", ", ParityRunner.KnownModules)}.");
+                stderr.WriteLine($"Unknown module '{module}'. Modules: all, {string.Join(", ", ParityRunner.KnownModules)}.");
                 return 2;
             }
             try

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bogmem.Cli;
 
 namespace Bogmem.Slices.Tests.Cli;
@@ -53,6 +54,23 @@ public static class CliExitCodeTests
                         "--report", Path.Combine(scratch, "bad_report.json")], TestKit.Root));
 
             Expect(failures, "--help -> 0", 0, Invoke(["--help"], TestKit.Root));
+
+            // The canonical full-corpus gate is one aggregate invocation. It must
+            // run every leaf module and produce an aggregate report, rather than
+            // being rejected as an unknown module before dispatch.
+            var allReport = Path.Combine(scratch, "all_report.json");
+            Expect(failures, "parity all -> 0", 0,
+                Invoke(["parity", "all", "--report", allReport], TestKit.Root));
+            if (!File.Exists(allReport))
+                failures.Add("parity all should write its aggregate report");
+            else
+            {
+                using var allJson = JsonDocument.Parse(File.ReadAllText(allReport));
+                if (allJson.RootElement.GetProperty("slice").GetString() != "ALL")
+                    failures.Add("parity all report should identify slice ALL");
+                if (allJson.RootElement.GetProperty("findings").GetArrayLength() == 0)
+                    failures.Add("parity all report should contain leaf findings");
+            }
 
             // Every advertised module must replay green through the CLI path, so
             // the CLI verdict and the test-suite verdict can never disagree.

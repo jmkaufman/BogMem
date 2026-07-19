@@ -34,63 +34,14 @@ public static partial class ParityRunner
 
         try
         {
-            switch (module)
+            if (module == "all")
             {
-                case "config":
-                    RunConfig(RequireCorpus(goldenRoot, "config"), findings);
-                    break;
-                case "ids":
-                    RunIds(RequireCorpus(goldenRoot, "ids"), findings);
-                    break;
-                case "wal":
-                    RunWal(RequireCorpus(goldenRoot, "wal"), findings);
-                    break;
-                case "search":
-                    RunSearchCli(RequireCorpus(goldenRoot, "search", "cli"), findings);
-                    RunSearchMcp(RequireCorpus(goldenRoot, "search", "mcp"), findings);
-                    break;
-                case "dedup":
-                    RunDedup(RequireCorpus(goldenRoot, "dedup"), findings, root);
-                    break;
-                case "mcp":
-                    RunMcp(RequireCorpus(goldenRoot, "mcp"), findings);
-                    break;
-                case "deferred_ids":
-                    RunDeferredIds(RequireCorpus(goldenRoot, "deferred_ids"), findings, root);
-                    break;
-                case "chunks":
-                    RunChunks(goldenRoot, findings);
-                    break;
-                case "dates":
-                    RunDates(RequireCorpus(goldenRoot, "dates"), findings);
-                    break;
-                case "dynamics":
-                    RunDynamics(RequireCorpus(goldenRoot, "dynamics"), findings);
-                    break;
-                case "locks":
-                    RunLocks(RequireCorpus(goldenRoot, "locks"), findings);
-                    break;
-                case "spellcheck":
-                    RunSpellcheck(RequireCorpus(goldenRoot, "spellcheck"), findings);
-                    break;
-                case "storage":
-                    RunGraphFiles(RequireCorpus(goldenRoot, "graph_files"), findings);
-                    RunSqliteExact(RequireCorpus(goldenRoot, "sqlite_exact"), findings);
-                    break;
-                case "model":
-                    RunModel(RequireCorpus(goldenRoot, "model"), goldenRoot, findings);
-                    break;
-                case "embedding":
-                    RunEmbedding(RequireCorpus(goldenRoot, "embedding"), goldenRoot, findings);
-                    break;
-                case "chroma":
-                    RunChroma(RequireCorpus(goldenRoot, "chroma"), findings);
-                    break;
-                case "kg":
-                    RunKg(RequireCorpus(goldenRoot, "kg"), goldenRoot, findings);
-                    break;
-                default:
-                    throw new CorpusException($"CLI parity comparisons are not wired for module '{module}'.");
+                foreach (var leafModule in KnownModules)
+                    RunModule(leafModule, root, goldenRoot, findings);
+            }
+            else
+            {
+                RunModule(module, root, goldenRoot, findings);
             }
         }
         catch (CorpusException)
@@ -104,6 +55,68 @@ public static partial class ParityRunner
 
         ParityReportWriter.Write(reportPath, SliceId(module), findings, gapLedger);
         return new(findings.Count > 0 && findings.All(x => x.Passed), findings.Count);
+    }
+
+    private static void RunModule(string module, string root, string goldenRoot, List<ParityFinding> findings)
+    {
+        switch (module)
+        {
+            case "config":
+                RunConfig(RequireCorpus(goldenRoot, "config"), findings);
+                break;
+            case "ids":
+                RunIds(RequireCorpus(goldenRoot, "ids"), findings);
+                break;
+            case "wal":
+                RunWal(RequireCorpus(goldenRoot, "wal"), findings);
+                break;
+            case "search":
+                RunSearchCli(RequireCorpus(goldenRoot, "search", "cli"), findings);
+                RunSearchMcp(RequireCorpus(goldenRoot, "search", "mcp"), findings);
+                break;
+            case "dedup":
+                RunDedup(RequireCorpus(goldenRoot, "dedup"), findings, root);
+                break;
+            case "mcp":
+                RunMcp(RequireCorpus(goldenRoot, "mcp"), findings);
+                break;
+            case "deferred_ids":
+                RunDeferredIds(RequireCorpus(goldenRoot, "deferred_ids"), findings, root);
+                break;
+            case "chunks":
+                RunChunks(goldenRoot, findings);
+                break;
+            case "dates":
+                RunDates(RequireCorpus(goldenRoot, "dates"), findings);
+                break;
+            case "dynamics":
+                RunDynamics(RequireCorpus(goldenRoot, "dynamics"), findings);
+                break;
+            case "locks":
+                RunLocks(RequireCorpus(goldenRoot, "locks"), findings);
+                break;
+            case "spellcheck":
+                RunSpellcheck(RequireCorpus(goldenRoot, "spellcheck"), findings);
+                break;
+            case "storage":
+                RunGraphFiles(RequireCorpus(goldenRoot, "graph_files"), findings);
+                RunSqliteExact(RequireCorpus(goldenRoot, "sqlite_exact"), findings);
+                break;
+            case "model":
+                RunModel(RequireCorpus(goldenRoot, "model"), goldenRoot, findings);
+                break;
+            case "embedding":
+                RunEmbedding(RequireCorpus(goldenRoot, "embedding"), goldenRoot, findings);
+                break;
+            case "chroma":
+                RunChroma(RequireCorpus(goldenRoot, "chroma"), findings);
+                break;
+            case "kg":
+                RunKg(RequireCorpus(goldenRoot, "kg"), goldenRoot, findings);
+                break;
+            default:
+                throw new CorpusException($"CLI parity comparisons are not wired for module '{module}'.");
+        }
     }
 
     private static string ResolveGoldenRoot(string root, string? goldenOverride)
@@ -525,6 +538,7 @@ public static partial class ParityRunner
 
     private static string SliceId(string module) => module switch
     {
+        "all" => "ALL",
         "config" => "S8",
         "ids" => "S1",
         "wal" => "S10",
