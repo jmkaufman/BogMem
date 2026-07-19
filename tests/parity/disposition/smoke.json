@@ -16,6 +16,54 @@
       "Rule": "ULP",
       "Reason": null,
       "Slice": "S3"
+    },
+    {
+      "TestId": "ids",
+      "Module": "IdRecipes",
+      "Status": "pass",
+      "Rule": "EXACT",
+      "Reason": null,
+      "Slice": "S1"
+    },
+    {
+      "TestId": "wal",
+      "Module": "WalWriter",
+      "Status": "pass",
+      "Rule": "EXACT",
+      "Reason": null,
+      "Slice": "S10"
+    },
+    {
+      "TestId": "search",
+      "Module": "Searcher",
+      "Status": "pass",
+      "Rule": "EXACT",
+      "Reason": null,
+      "Slice": "S4"
+    },
+    {
+      "TestId": "dedup",
+      "Module": "DedupGrouper",
+      "Status": "pass",
+      "Rule": "EXACT",
+      "Reason": null,
+      "Slice": "S5a"
+    },
+    {
+      "TestId": "mcp",
+      "Module": "McpServer",
+      "Status": "pass",
+      "Rule": "EXACT",
+      "Reason": null,
+      "Slice": "S9"
+    },
+    {
+      "TestId": "deferred_ids",
+      "Module": "DeferredIdOracle",
+      "Status": "not_applicable",
+      "Rule": "PLACEHOLDER",
+      "Reason": "oracle staged",
+      "Slice": "S13"
     }
   ]
 }
