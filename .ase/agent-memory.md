@@ -1,31 +1,41 @@
-# Current-state briefing
+﻿# Current-state briefing — integration merge landscape (run 012)
 
-## Owned map (run 012 assignment)
+## Merge state
+- Integration branch: `agent/openai-gpt-5-5-integration/run-mempalace-to-bogmem-v3-constellation-012`.
+- Merged cleanly: `codex-cli-5-6-sol-coder` then `grok-cli-grok-build`.
+- `local-claude-code-claude-fable-5` had an additive conflict only in this memory file; source/test files did not require semantic conflict resolution.
+- No queued branch was observed modifying `golden/` during merge output; keep `golden/` read-only.
 
-- **S1** `src/Bogmem.Slices/Ids/IdRecipes.cs` — length-prefixed SHA recipes (rune counts, None→"None", drawer 24 / triple 12). Tests + CLI parity on `golden/ids/`.
-- **S10** `src/Bogmem.Slices/Wal/WalWriter.cs` — Python-shaped JSONL audit lines with redaction and ensure_ascii escapes.
-- **S4** `src/Bogmem.Slices/Search/Searcher.cs` — BM25 k1=1.5/b=0.75, hybrid 0.6/0.4, closet boosts, ordinal-stable OrderBy.
-- **S5a** `src/Bogmem.Slices/Dedup/{DedupGrouper,GapLedger}.cs` — threshold 0.15, min group 5, `ase.dedup_gap_ledger.v1` under `tests/parity/disposition/`.
-- **S9** `src/Bogmem.Slices/Mcp/McpServer.cs` + `tools.json` — 36 tools / 14 mutating; errors -32002/-32003/-32000; missing version→oldest, unrecognized→newest.
-- **S13** `src/Bogmem.Slices/DeferredBackends/DeferredIdOracle.cs` — UUID5 oracle staged to `testdata/deferred_ids/oracle.jsonl` (not golden/).
+## Lane areas now present
+- Harness/CLI foundation: comparison dispatch, corpus JSONL replay, parity reports, disposition ledgers, D1/D2/D3 interfaces, CLI help/parity entrypoints.
+- S8 config: file/env precedence and legacy boolean coercion.
+- S3 embedding: prefix/tokenizer seam, 768-to-384 float32 normalization, batch padding seam.
+- S7 Chroma/ANN: deterministic cosine ANN and D3 guard helpers.
+- S5c knowledge graph: SQLite temporal graph with add/query/invalidate/timeline; explicit recordedAt used for golden replay.
+- S1 IDs: length-prefixed SHA recipes (rune counts, None→"None", drawer 24 / triple 12), CLI parity on `golden/ids/`.
+- S10 WAL: Python-shaped JSONL audit lines with redaction and ensure_ascii escapes.
+- S4 search: BM25 k1=1.5/b=0.75, hybrid 0.6/0.4, closet boosts, ordinal-stable ordering.
+- S5a dedup: threshold 0.15, min group 5, `tests/parity/disposition/gap_ledger.json`; self-slot occupancy is intentional.
+- S9 MCP: `McpServer.cs` plus `tools.json`; 36 tools / 14 mutating; error codes -32002/-32003/-32000; missing version→oldest, unrecognized→newest.
+- S13 deferred backends: UUID5 oracle staged under `testdata/deferred_ids/oracle.jsonl`, not `golden/`.
+- S2 chunkers: window/convo/diary exact vs `golden/chunks/{window,convo,diary}`.
+- S11 locking: POSIX `open(2)`/`flock(2)` implementation exact vs `golden/locks`.
+- S6 storage: graph files and sqlite_exact exact vs `golden/graph_files` and `golden/sqlite_exact`.
+- S5b dynamics: strict-zero float32 ULP vs `golden/dynamics`.
+- S12 spellcheck: `ISpeller`/`Speller` bounded D2 agreement vs `golden/spellcheck`.
 
-CLI parity wiring for these modules lives in `src/Bogmem.Cli/ParityRunner.cs` (ids, wal, search, dedup, mcp, deferred_ids). Disposition evidence: `tests/parity/disposition/{ids,wal,search,dedup,mcp,deferred_ids,gap_ledger,smoke}.json`.
+## Conflict/merge landmines
+- `golden/` is vendored oracle evidence and must remain read-only. Run-authored evidence belongs under `tests/parity/disposition/` or approved `testdata/` paths.
+- Running the console suite may rewrite `tests/parity/disposition/dedup.json` with an absolute worktree path in a reason string; revert that path churn rather than committing it.
+- Gap-ledger pointers should stay relative (`tests/parity/disposition/gap_ledger.json`).
+- POSIX locking intentionally avoids FileStream share emulation; do not simplify it.
+- SqliteExactStore scoring and dynamics arithmetic are fixture-sensitive; do not reorder float32 operations.
+- MCP version list is newest-first (`[0]` newest, `[^1]` oldest); semantic JSON equality is used for golden compares.
+- NU1903 for SQLitePCLRaw is known/non-blocking for parity checks.
+- `rg` is unavailable in this environment; use `grep`/`find`.
 
-## Decisions and landmines
-
-- `golden/` is **read-only**. Never write fixtures there. Disposition + gap ledger go under `tests/parity/disposition/`.
-- Gap-ledger pointer must be **relative** (`tests/parity/disposition/gap_ledger.json`). Absolute worktree paths poison disposition when seats copy each other.
-- Deferred oracle emits under `testdata/deferred_ids/` (stack-conformance allowlist), not `golden/deferred_ids/`.
-- MCP version list is newest-first: `[0]` = newest (2025-11-25), `[^1]` = oldest (2024-11-05).
-- MCP golden compares are semantic JSON equality (property order independent); wire uses `UnsafeRelaxedJsonEscaping`.
-- Dedup: `n_results=min(kept,5)` over the full group — self-slot occupancy is intentional legacy behavior.
-- `dotnet test` console suite is the reliable check; NU1903 on SQLitePCLRaw is known and non-blocking.
-- Parity validation seat owns `parity_report.json`; we produce disposition ledgers and can emit reports via CLI for evidence.
-
-## State
-
-- **Done:** All six assigned slices implemented, golden replay tests green, CLI parity wired and green for S1/S4/S5a/S9/S10/S13.
-  - `dotnet test Bogmem.sln -c Release` — all modules ok.
-  - `bogmem parity {ids,wal,search,dedup,mcp,deferred_ids}` — all passed.
-- **Known incomplete:** Hallway IDs unit-tested for symmetry but not present in `golden/ids` kinds (tunnel is). Full palace-I/O / mine-sweep still other lanes.
-- **Deliberately deferred:** Live qdrant/milvus/pgvector comparison (S13 PLACEHOLDER only).
+## Checks to adjudicate this integration
+- Primary command: `dotnet run --project tests/Bogmem.Slices.Tests` (custom console runner).
+- Additional solution check used by lanes: `dotnet test Bogmem.sln -c Release`.
+- CLI parity evidence lanes reported: `bogmem parity {ids,wal,search,dedup,mcp,deferred_ids}` passing; other slice CLI replay may still be incomplete.
+- Parity validation owns any final `parity_report.json`; integration should not author it unless explicitly assigned.
