@@ -9,13 +9,26 @@ using Bogmem.Slices.Mcp;
 using Bogmem.Slices.Search;
 using Bogmem.Slices.Wal;
 
-internal sealed record ParityRunResult(bool Passed, int CheckedCount);
+public sealed record ParityRunResult(bool Passed, int CheckedCount);
 
-internal static class ParityRunner
+public sealed class CorpusException : Exception
 {
-    public static ParityRunResult Run(string startDirectory, string module, string reportPath)
+    public CorpusException(string message) : base(message) { }
+}
+
+public static partial class ParityRunner
+{
+    public static readonly string[] KnownModules =
+    [
+        "config", "ids", "wal", "search", "dedup", "mcp", "deferred_ids",
+        "chunks", "dates", "dynamics", "locks", "spellcheck", "storage",
+        "model", "embedding", "chroma", "kg",
+    ];
+
+    public static ParityRunResult Run(string startDirectory, string module, string reportPath, string? goldenOverride = null)
     {
         var root = FindCorpusRoot(startDirectory);
+        var goldenRoot = ResolveGoldenRoot(root, goldenOverride);
         var findings = new List<ParityFinding>();
         var gapLedger = FindGapLedgerPointer(root);
 
@@ -24,32 +37,65 @@ internal static class ParityRunner
             switch (module)
             {
                 case "config":
-                    RunConfig(RequireCorpus(root, "config"), findings);
+                    RunConfig(RequireCorpus(goldenRoot, "config"), findings);
                     break;
                 case "ids":
-                    RunIds(RequireCorpus(root, "ids"), findings);
+                    RunIds(RequireCorpus(goldenRoot, "ids"), findings);
                     break;
                 case "wal":
-                    RunWal(RequireCorpus(root, "wal"), findings);
+                    RunWal(RequireCorpus(goldenRoot, "wal"), findings);
                     break;
                 case "search":
-                    RunSearchCli(RequireCorpus(root, "search", "cli"), findings);
-                    RunSearchMcp(RequireCorpus(root, "search", "mcp"), findings);
+                    RunSearchCli(RequireCorpus(goldenRoot, "search", "cli"), findings);
+                    RunSearchMcp(RequireCorpus(goldenRoot, "search", "mcp"), findings);
                     break;
                 case "dedup":
-                    RunDedup(RequireCorpus(root, "dedup"), findings, root);
+                    RunDedup(RequireCorpus(goldenRoot, "dedup"), findings, root);
                     break;
                 case "mcp":
-                    RunMcp(RequireCorpus(root, "mcp"), findings);
+                    RunMcp(RequireCorpus(goldenRoot, "mcp"), findings);
                     break;
                 case "deferred_ids":
-                    RunDeferredIds(RequireCorpus(root, "deferred_ids"), findings, root);
+                    RunDeferredIds(RequireCorpus(goldenRoot, "deferred_ids"), findings, root);
+                    break;
+                case "chunks":
+                    RunChunks(goldenRoot, findings);
+                    break;
+                case "dates":
+                    RunDates(RequireCorpus(goldenRoot, "dates"), findings);
+                    break;
+                case "dynamics":
+                    RunDynamics(RequireCorpus(goldenRoot, "dynamics"), findings);
+                    break;
+                case "locks":
+                    RunLocks(RequireCorpus(goldenRoot, "locks"), findings);
+                    break;
+                case "spellcheck":
+                    RunSpellcheck(RequireCorpus(goldenRoot, "spellcheck"), findings);
+                    break;
+                case "storage":
+                    RunGraphFiles(RequireCorpus(goldenRoot, "graph_files"), findings);
+                    RunSqliteExact(RequireCorpus(goldenRoot, "sqlite_exact"), findings);
+                    break;
+                case "model":
+                    RunModel(RequireCorpus(goldenRoot, "model"), goldenRoot, findings);
+                    break;
+                case "embedding":
+                    RunEmbedding(RequireCorpus(goldenRoot, "embedding"), goldenRoot, findings);
+                    break;
+                case "chroma":
+                    RunChroma(RequireCorpus(goldenRoot, "chroma"), findings);
+                    break;
+                case "kg":
+                    RunKg(RequireCorpus(goldenRoot, "kg"), goldenRoot, findings);
                     break;
                 default:
-                    findings.Add(new("unsupported_module", "EXACT", false,
-                        $"CLI parity comparisons are not wired for module '{module}'."));
-                    break;
+                    throw new CorpusException($"CLI parity comparisons are not wired for module '{module}'.");
             }
+        }
+        catch (CorpusException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -60,11 +106,29 @@ internal static class ParityRunner
         return new(findings.Count > 0 && findings.All(x => x.Passed), findings.Count);
     }
 
-    private static string RequireCorpus(string root, params string[] parts)
+    private static string ResolveGoldenRoot(string root, string? goldenOverride)
     {
-        var path = Path.Combine(new[] { root, "golden" }.Concat(parts).Append("vectors.jsonl").ToArray());
+        if (goldenOverride is null)
+        {
+            var defaultGolden = Path.Combine(root, "golden");
+            if (!Directory.Exists(defaultGolden))
+                throw new CorpusException($"No golden corpus directory found at '{defaultGolden}'.");
+            return defaultGolden;
+        }
+
+        var overridePath = Path.GetFullPath(goldenOverride);
+        if (!Directory.Exists(overridePath))
+            throw new CorpusException($"--golden directory '{overridePath}' does not exist.");
+        // Accept either the golden directory itself or a repo root containing golden/.
+        var nested = Path.Combine(overridePath, "golden");
+        return Directory.Exists(nested) ? nested : overridePath;
+    }
+
+    private static string RequireCorpus(string goldenRoot, params string[] parts)
+    {
+        var path = Path.Combine(new[] { goldenRoot }.Concat(parts).Append("vectors.jsonl").ToArray());
         if (!File.Exists(path))
-            throw new FileNotFoundException($"No frozen corpus at '{path}'.", path);
+            throw new CorpusException($"No frozen corpus at '{path}'.");
         return path;
     }
 
@@ -468,6 +532,16 @@ internal static class ParityRunner
         "dedup" => "S5a",
         "mcp" => "S9",
         "deferred_ids" => "S13",
+        "chunks" => "S2",
+        "dates" => "S2",
+        "dynamics" => "S5b",
+        "locks" => "S11",
+        "spellcheck" => "S12",
+        "storage" => "S6",
+        "model" => "S3",
+        "embedding" => "S3",
+        "chroma" => "S7",
+        "kg" => "S5c",
         _ => module
     };
 }

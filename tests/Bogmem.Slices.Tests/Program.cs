@@ -2,6 +2,7 @@ using Bogmem.Harness;
 using Bogmem.Slices.Tests;
 using Bogmem.Slices.Tests.Chroma;
 using Bogmem.Slices.Tests.Chunkers;
+using Bogmem.Slices.Tests.Cli;
 using Bogmem.Slices.Tests.Config;
 using Bogmem.Slices.Tests.Dates;
 using Bogmem.Slices.Tests.Dedup;
@@ -36,6 +37,7 @@ RunModule("deferred_ids", DeferredIdOracleTests.Run);
 RunModule("sanitizer", QuerySanitizerTests.Run);
 RunModule("dates", ContentDateExtractorTests.Run);
 RunModule("model", ModelInventoryTests.Run);
+RunModule("cli_exit_codes", CliExitCodeTests.Run);
 
 var smoke = new TestDispositionLedgerWriter();
 smoke.Append("config", "ConfigResolver", "pass", "EXACT", slice: "S8");

@@ -48,7 +48,9 @@ public sealed class KnowledgeGraphStore : IDisposable
  public IReadOnlyList<GraphRow> Query(string entity,DateOnly? asOf=null,string direction="outgoing")
  {
   var incoming=string.Equals(direction,"incoming",StringComparison.OrdinalIgnoreCase);
-  var rows=Read("SELECT id,subject,predicate,object,valid_from,valid_to,confidence FROM triples WHERE "+(incoming?"lower(object)=lower($entity)":"lower(subject)=lower($entity)")+" ORDER BY valid_from IS NULL, valid_from, predicate",("$entity",entity));
+  // Legacy at the pin returns query rows in insertion order (bare SELECT →
+  // rowid); golden/kg query vectors encode that order, so it is the contract.
+  var rows=Read("SELECT id,subject,predicate,object,valid_from,valid_to,confidence FROM triples WHERE "+(incoming?"lower(object)=lower($entity)":"lower(subject)=lower($entity)")+" ORDER BY rowid",("$entity",entity));
   return rows.Where(t=>Active(t,asOf)).Select(t=>new GraphRow(direction,t.Subject,t.Predicate,t.Object,t.ValidFrom,t.ValidTo,t.Confidence,Current(t,asOf))).ToArray();
  }
  public IReadOnlyList<Triple> Timeline(string entity)=>Read("SELECT id,subject,predicate,object,valid_from,valid_to,confidence FROM triples WHERE lower(subject)=lower($entity) OR lower(object)=lower($entity) ORDER BY valid_from IS NULL, valid_from, id",("$entity",entity));
@@ -57,7 +59,10 @@ public sealed class KnowledgeGraphStore : IDisposable
  private List<Triple> Read(string sql,params (string Name,object Value)[] parameters){using var c=connection.CreateCommand();c.CommandText=sql;foreach(var p in parameters)c.Parameters.AddWithValue(p.Name,p.Value);using var r=c.ExecuteReader();var result=new List<Triple>();while(r.Read())result.Add(new(r.GetString(0),r.GetString(1),r.GetString(2),r.GetString(3),ParseDate(r.IsDBNull(4)?null:r.GetString(4)),ParseDate(r.IsDBNull(5)?null:r.GetString(5)),r.GetDouble(6)));return result;}
  private static DateOnly? ParseDate(string? value)=>value is null?null:DateOnly.ParseExact(value,"yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture);
  private static bool Active(Triple t,DateOnly? d)=>d is null||(t.ValidFrom is null||t.ValidFrom<=d)&&(t.ValidTo is null||d<t.ValidTo);
- private static bool Current(Triple t,DateOnly? d)=>t.ValidTo is null||d is null||d<t.ValidTo;
+ // Legacy "current" means the triple is still open (no valid_to), regardless
+ // of the as_of date — golden/kg query_alice_asof_2023 marks the closed Acme
+ // triple current=false even though 2023 is inside its validity window.
+ private static bool Current(Triple t,DateOnly? d)=>t.ValidTo is null;
  public static string Id(string s,string p,string o,DateOnly? validFrom=null,string? recordedAt=null)=>IdRecipes.MakeTripleId(Slug(s),Slug(p),Slug(o),validFrom?.ToString("yyyy-MM-dd"),recordedAt??DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"));
  private static string Slug(string value)=>new(value.ToLowerInvariant().Select(c=>char.IsLetterOrDigit(c)||c=='_'||c=='.'?c:'_').ToArray());
  public void Dispose()=>connection.Dispose();

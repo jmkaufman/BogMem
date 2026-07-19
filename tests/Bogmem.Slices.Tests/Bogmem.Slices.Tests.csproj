@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Bogmem.Harness/Bogmem.Harness.csproj" />
     <ProjectReference Include="../../src/Bogmem.Slices/Bogmem.Slices.csproj" />
+    <ProjectReference Include="../../src/Bogmem.Cli/Bogmem.Cli.csproj" />
   </ItemGroup>
   <Target Name="RunConsoleSuite" DependsOnTargets="Build">
     <Message Text="Running Bogmem.Slices.Tests console suite via dotnet test" Importance="high" />
