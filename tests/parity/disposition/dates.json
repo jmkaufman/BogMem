@@ -2,28 +2,28 @@
   "schema": "ase.test_disposition_ledger.v1",
   "rows": [
     {
-      "TestId": "dates_golden_replay",
-      "Module": "dates",
-      "Status": "covered_by_golden",
-      "Rule": "EXACT",
-      "Reason": "all 18 golden/dates vectors replayed, iso \u002B tier exact",
-      "Slice": "S2"
+      "test_id": "dates_golden_replay",
+      "module": "dates",
+      "status": "covered_by_golden",
+      "rule": "EXACT",
+      "reason": "all 18 golden/dates vectors replayed, iso \u002B tier exact",
+      "slice": "S2"
     },
     {
-      "TestId": "dates_mtime_utc",
-      "Module": "dates",
-      "Status": "covered_by_golden",
-      "Rule": "EXACT",
-      "Reason": "mtime vector materialized on disk and interpreted in UTC per manifest",
-      "Slice": "S2"
+      "test_id": "dates_mtime_utc",
+      "module": "dates",
+      "status": "covered_by_golden",
+      "rule": "EXACT",
+      "reason": "mtime vector materialized on disk and interpreted in UTC per manifest",
+      "slice": "S2"
     },
     {
-      "TestId": "dates_fuzzy_gate",
-      "Module": "dates",
-      "Status": "covered_by_golden",
-      "Rule": "EXACT",
-      "Reason": "PR #1584 hallucination-gate cases (junk filename, version string, partial year) return None",
-      "Slice": "S2"
+      "test_id": "dates_fuzzy_gate",
+      "module": "dates",
+      "status": "covered_by_golden",
+      "rule": "EXACT",
+      "reason": "PR #1584 hallucination-gate cases (junk filename, version string, partial year) return None",
+      "slice": "S2"
     }
   ]
 }
