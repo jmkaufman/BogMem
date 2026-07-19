@@ -1,0 +1,21 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "TestId": "config",
+      "Module": "ConfigResolver",
+      "Status": "pass",
+      "Rule": "EXACT",
+      "Reason": null,
+      "Slice": "S8"
+    },
+    {
+      "TestId": "embedder",
+      "Module": "Embedder",
+      "Status": "pass",
+      "Rule": "ULP",
+      "Reason": null,
+      "Slice": "S3"
+    }
+  ]
+}

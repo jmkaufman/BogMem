@@ -1,0 +1,1 @@
+namespace Bogmem.Harness.Interfaces; public interface IAnnIndex { void Add(string id,ReadOnlySpan<float> vector); IReadOnlyList<(string Id,float Distance)> Search(ReadOnlySpan<float> query,int limit); }
