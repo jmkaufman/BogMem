@@ -13,18 +13,19 @@
     "python": "3.9.6"
   },
   "dependency_versions": {
-    "chromadb": "1.5.9",
+    "chromadb": "unknown",
     "numpy": "2.0.2",
     "dateutil": "2.9.0.post0",
-    "autocorrect": "absent",
+    "autocorrect": "unknown",
     "yaml": "6.0.3",
-    "tokenizers": "0.22.2",
-    "huggingface_hub": "1.8.0",
+    "tokenizers": "absent",
+    "huggingface_hub": "absent",
     "mempalace": "3.5.0"
   },
   "inputs_source": "env x file matrix over MempalaceConfig properties (per-property precedence is the contract: backend file->env->default, most others env->file->default, chunk trio file-only)",
   "notes": "expected.* omits palace_path when neither env nor file sets it (default expands the capture host HOME). min_chunk_size_explicit is the presence sentinel (legacy None-vs-int).",
   "files": {
-    "config.json": "91c75daf6f975d0968d5557557853626395762f1307b7a3b77fc81e902dcfafd"
-  }
+    "vectors.jsonl": "e1d50850fd52cfd5b395dfcd04e104e709ab6a0c94dfb4e9e6918e8e72cee8f2"
+  },
+  "corpus_schema": "bogmem.golden.config.v1"
 }

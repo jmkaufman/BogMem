@@ -1,0 +1,25 @@
+{"id": "palace-key:/no/such/dir/palace", "input": {"kind": "palace_key", "path": "/no/such/dir/palace"}, "expected": {"resolved": "/no/such/dir/palace", "key": "cf75d8106c245a17", "lock_file_name": "mine_palace_cf75d8106c245a17.lock"}}
+{"id": "palace-key:/no/such/dir/palace/", "input": {"kind": "palace_key", "path": "/no/such/dir/palace/"}, "expected": {"resolved": "/no/such/dir/palace", "key": "cf75d8106c245a17", "lock_file_name": "mine_palace_cf75d8106c245a17.lock"}}
+{"id": "palace-key:/no/such/dir/../elsewhere/palace", "input": {"kind": "palace_key", "path": "/no/such/dir/../elsewhere/palace"}, "expected": {"resolved": "/no/such/elsewhere/palace", "key": "93597111442192f3", "lock_file_name": "mine_palace_93597111442192f3.lock"}}
+{"id": "palace-key:/no/such/./dir/palace", "input": {"kind": "palace_key", "path": "/no/such/./dir/palace"}, "expected": {"resolved": "/no/such/dir/palace", "key": "cf75d8106c245a17", "lock_file_name": "mine_palace_cf75d8106c245a17.lock"}}
+{"id": "palace-key:/No/Such/Dir/Palace", "input": {"kind": "palace_key", "path": "/No/Such/Dir/Palace"}, "expected": {"resolved": "/No/Such/Dir/Palace", "key": "847d847b9a6f41bc", "lock_file_name": "mine_palace_847d847b9a6f41bc.lock"}}
+{"id": "palace-key:/no//such///dir/palace", "input": {"kind": "palace_key", "path": "/no//such///dir/palace"}, "expected": {"resolved": "/no/such/dir/palace", "key": "cf75d8106c245a17", "lock_file_name": "mine_palace_cf75d8106c245a17.lock"}}
+{"id": "palace-key:/\u043f\u0430\u043b\u0430\u0301\u0446/m\u00e9moire/\u5bae\u6bbf", "input": {"kind": "palace_key", "path": "/\u043f\u0430\u043b\u0430\u0301\u0446/m\u00e9moire/\u5bae\u6bbf"}, "expected": {"resolved": "/\u043f\u0430\u043b\u0430\u0301\u0446/m\u00e9moire/\u5bae\u6bbf", "key": "bdbd2311533b19fb", "lock_file_name": "mine_palace_bdbd2311533b19fb.lock"}}
+{"id": "palace-key:/no/such/dir/palace with spaces", "input": {"kind": "palace_key", "path": "/no/such/dir/palace with spaces"}, "expected": {"resolved": "/no/such/dir/palace with spaces", "key": "18b23d4d2eb56cf6", "lock_file_name": "mine_palace_18b23d4d2eb56cf6.lock"}}
+{"id": "palace-key:/a/b/c/../../x", "input": {"kind": "palace_key", "path": "/a/b/c/../../x"}, "expected": {"resolved": "/a/x", "key": "30388766eff501c1", "lock_file_name": "mine_palace_30388766eff501c1.lock"}}
+{"id": "palace-key:/..", "input": {"kind": "palace_key", "path": "/.."}, "expected": {"resolved": "/", "key": "8a5edab282632443", "lock_file_name": "mine_palace_8a5edab282632443.lock"}}
+{"id": "palace-key:/", "input": {"kind": "palace_key", "path": "/"}, "expected": {"resolved": "/", "key": "8a5edab282632443", "lock_file_name": "mine_palace_8a5edab282632443.lock"}}
+{"id": "mine-lock-name:/no/such/file.md", "input": {"kind": "mine_lock_name", "path": "/no/such/file.md"}, "expected": {"lock_file_name": "620bc318769dee07.lock"}}
+{"id": "mine-lock-name:relative/path.txt", "input": {"kind": "mine_lock_name", "path": "relative/path.txt"}, "expected": {"lock_file_name": "2f35426665114647.lock"}}
+{"id": "mine-lock-name:/No/Such/File.MD", "input": {"kind": "mine_lock_name", "path": "/No/Such/File.MD"}, "expected": {"lock_file_name": "4716483a7ca313e9.lock"}}
+{"id": "mine-lock-name:/\u043f\u0430\u043b\u0430\u0301\u0446/\u0444\u0430\u0439\u043b.md", "input": {"kind": "mine_lock_name", "path": "/\u043f\u0430\u043b\u0430\u0301\u0446/\u0444\u0430\u0439\u043b.md"}, "expected": {"lock_file_name": "b182447d144af262.lock"}}
+{"id": "mine-lock-name:<empty>", "input": {"kind": "mine_lock_name", "path": ""}, "expected": {"lock_file_name": "e3b0c44298fc1c14.lock"}}
+{"id": "holder:'12345 mempalace mine ~/proj'", "input": {"kind": "holder_format", "content": "12345 mempalace mine ~/proj"}, "expected": {"holder": "PID 12345 (mempalace mine ~/proj)"}}
+{"id": "holder:'12345'", "input": {"kind": "holder_format", "content": "12345"}, "expected": {"holder": "PID 12345"}}
+{"id": "holder:'12345    '", "input": {"kind": "holder_format", "content": "12345    "}, "expected": {"holder": "PID 12345"}}
+{"id": "holder:'12345 \\t mempalace'", "input": {"kind": "holder_format", "content": "12345 \t mempalace"}, "expected": {"holder": "PID 12345 (mempalace)"}}
+{"id": "holder:'notapid mempalace'", "input": {"kind": "holder_format", "content": "notapid mempalace"}, "expected": {"holder": "another writer (identity not recorded)"}}
+{"id": "holder:''", "input": {"kind": "holder_format", "content": ""}, "expected": {"holder": "another writer (identity not recorded)"}}
+{"id": "holder:'   '", "input": {"kind": "holder_format", "content": "   "}, "expected": {"holder": "another writer (identity not recorded)"}}
+{"id": "holder:'99 a b c d e'", "input": {"kind": "holder_format", "content": "99 a b c d e"}, "expected": {"holder": "PID 99 (a b c d e)"}}
+{"id": "holder:'12a45 cmd'", "input": {"kind": "holder_format", "content": "12a45 cmd"}, "expected": {"holder": "another writer (identity not recorded)"}}

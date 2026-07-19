@@ -13,18 +13,19 @@
     "python": "3.9.6"
   },
   "dependency_versions": {
-    "chromadb": "1.5.9",
+    "chromadb": "unknown",
     "numpy": "2.0.2",
     "dateutil": "2.9.0.post0",
-    "autocorrect": "absent",
+    "autocorrect": "unknown",
     "yaml": "6.0.3",
-    "tokenizers": "0.22.2",
-    "huggingface_hub": "1.8.0",
+    "tokenizers": "absent",
+    "huggingface_hub": "absent",
     "mempalace": "3.5.0"
   },
   "inputs_source": "mirrors IdCorpusGenerator.BuildInScopeRows (minus chunk_scheme); ids/preimages computed by mempalace.ids + palace_graph._canonical_tunnel_id at the pin",
   "notes": "chunk_scheme (MakeChunkId sha24_{index}) has NO legacy analog at the pin \u2014 C#-side invention, excluded from frozen evidence; writers must cite a legacy source or drop the kind when switching the harness to FindGolden.",
   "files": {
-    "table.json": "6b3dfd050ed3790516507e5b3432a556e51a06ba2c118da58c17eff82472f273"
-  }
+    "vectors.jsonl": "2151762f4b9ffc9297f46eeab159ad267c0a223473e212517ab29b61103070b5"
+  },
+  "corpus_schema": "bogmem.golden_ids.v1"
 }
