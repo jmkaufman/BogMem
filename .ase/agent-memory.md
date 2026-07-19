@@ -1,25 +1,31 @@
 # Current-state briefing
 
-## Owned map
+## Owned map (run 012 assignment)
 
-- `src/Bogmem.Harness`: comparison dispatch, corpus JSONL replay, parity report, disposition ledger, and D1/D2/D3 interfaces.
-- `src/Bogmem.Cli`: executable help/parity entrypoint; `ParityRunner` currently replays config and IDs.
-- `src/Bogmem.Slices/Config`: file/env precedence and legacy boolean coercion.
-- `src/Bogmem.Slices/Embedding`: prefix, tokenizer seam, 768-to-384 float32 normalization, and batch padding seam.
-- `src/Bogmem.Slices/Chroma`: deterministic cosine ANN and D3 guard helpers.
-- `src/Bogmem.Slices/KnowledgeGraph`: SQLite temporal graph with add/query/invalidate/timeline.
+- **S1** `src/Bogmem.Slices/Ids/IdRecipes.cs` — length-prefixed SHA recipes (rune counts, None→"None", drawer 24 / triple 12). Tests + CLI parity on `golden/ids/`.
+- **S10** `src/Bogmem.Slices/Wal/WalWriter.cs` — Python-shaped JSONL audit lines with redaction and ensure_ascii escapes.
+- **S4** `src/Bogmem.Slices/Search/Searcher.cs` — BM25 k1=1.5/b=0.75, hybrid 0.6/0.4, closet boosts, ordinal-stable OrderBy.
+- **S5a** `src/Bogmem.Slices/Dedup/{DedupGrouper,GapLedger}.cs` — threshold 0.15, min group 5, `ase.dedup_gap_ledger.v1` under `tests/parity/disposition/`.
+- **S9** `src/Bogmem.Slices/Mcp/McpServer.cs` + `tools.json` — 36 tools / 14 mutating; errors -32002/-32003/-32000; missing version→oldest, unrecognized→newest.
+- **S13** `src/Bogmem.Slices/DeferredBackends/DeferredIdOracle.cs` — UUID5 oracle staged to `testdata/deferred_ids/oracle.jsonl` (not golden/).
+
+CLI parity wiring for these modules lives in `src/Bogmem.Cli/ParityRunner.cs` (ids, wal, search, dedup, mcp, deferred_ids). Disposition evidence: `tests/parity/disposition/{ids,wal,search,dedup,mcp,deferred_ids,gap_ledger,smoke}.json`.
 
 ## Decisions and landmines
 
-- `golden/` is vendored oracle evidence and must remain read-only. Run-authored disposition evidence belongs under `tests/parity/disposition/`.
-- The corpus module is `golden/embedding` (singular), despite the work-item prose saying embeddings.
-- KG IDs use the shared `IdRecipes` length-prefixed SHA recipe and require a frozen `recordedAt` to replay golden IDs. The store defaults to UTC for production and accepts an explicit timestamp for replay.
-- `Microsoft.Data.Sqlite` 10.0.0 is required for the SQLite implementation; restore emits NU1903 for its native SQLite transitive package, but build remains successful.
-- The console suite is wired through the custom `RunConsoleSuite` target; `dotnet run --project tests/Bogmem.Slices.Tests` is the direct reliable check.
+- `golden/` is **read-only**. Never write fixtures there. Disposition + gap ledger go under `tests/parity/disposition/`.
+- Gap-ledger pointer must be **relative** (`tests/parity/disposition/gap_ledger.json`). Absolute worktree paths poison disposition when seats copy each other.
+- Deferred oracle emits under `testdata/deferred_ids/` (stack-conformance allowlist), not `golden/deferred_ids/`.
+- MCP version list is newest-first: `[0]` = newest (2025-11-25), `[^1]` = oldest (2024-11-05).
+- MCP golden compares are semantic JSON equality (property order independent); wire uses `UnsafeRelaxedJsonEscaping`.
+- Dedup: `n_results=min(kept,5)` over the full group — self-slot occupancy is intentional legacy behavior.
+- `dotnet test` console suite is the reliable check; NU1903 on SQLitePCLRaw is known and non-blocking.
+- Parity validation seat owns `parity_report.json`; we produce disposition ledgers and can emit reports via CLI for evidence.
 
 ## State
 
-- Done: solution/harness/CLI, S8 config, S3 embedding seam, S7 ANN/guards, S5c SQLite graph. Restore/build and integrated tests pass.
-- Done: CLAiR `/health` returned HTTP 200 healthy.
-- Known incomplete: CLI parity replay is wired for config and IDs only; embedding/chroma/KG corpus replay should be added by the parity-validation lane.
-- Deliberately deferred: cross-wing/BFS KG navigation remains not applicable for S5c, as specified.
+- **Done:** All six assigned slices implemented, golden replay tests green, CLI parity wired and green for S1/S4/S5a/S9/S10/S13.
+  - `dotnet test Bogmem.sln -c Release` — all modules ok.
+  - `bogmem parity {ids,wal,search,dedup,mcp,deferred_ids}` — all passed.
+- **Known incomplete:** Hallway IDs unit-tested for symmetry but not present in `golden/ids` kinds (tunnel is). Full palace-I/O / mine-sweep still other lanes.
+- **Deliberately deferred:** Live qdrant/milvus/pgvector comparison (S13 PLACEHOLDER only).
