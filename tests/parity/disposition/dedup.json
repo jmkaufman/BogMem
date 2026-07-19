@@ -2,28 +2,28 @@
   "schema": "ase.test_disposition_ledger.v1",
   "rows": [
     {
-      "TestId": "dedup_grouper_golden",
-      "Module": "dedup",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S5a"
+      "test_id": "dedup_grouper_golden",
+      "module": "dedup",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S5a"
     },
     {
-      "TestId": "dedup_boundary",
-      "Module": "dedup",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": null,
-      "Slice": "S5a"
+      "test_id": "dedup_boundary",
+      "module": "dedup",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S5a"
     },
     {
-      "TestId": "dedup_gap_ledger",
-      "Module": "dedup",
-      "Status": "pass",
-      "Rule": "EXACT",
-      "Reason": "/Users/demouser/core/gitroot/BogMem/run-mempalace-to-bogmem-v3-constellation-011/grok-cli-grok-build-c1/tests/parity/disposition/gap_ledger.json",
-      "Slice": "S5a"
+      "test_id": "dedup_gap_ledger",
+      "module": "dedup",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "tests/parity/disposition/gap_ledger.json",
+      "slice": "S5a"
     }
   ]
 }

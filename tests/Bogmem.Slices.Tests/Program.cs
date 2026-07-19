@@ -2,6 +2,7 @@ using Bogmem.Harness;
 using Bogmem.Slices.Tests;
 using Bogmem.Slices.Tests.Chroma;
 using Bogmem.Slices.Tests.Chunkers;
+using Bogmem.Slices.Tests.Cli;
 using Bogmem.Slices.Tests.Config;
 using Bogmem.Slices.Tests.Dates;
 using Bogmem.Slices.Tests.Dedup;
@@ -36,11 +37,12 @@ RunModule("deferred_ids", DeferredIdOracleTests.Run);
 RunModule("sanitizer", QuerySanitizerTests.Run);
 RunModule("dates", ContentDateExtractorTests.Run);
 RunModule("model", ModelInventoryTests.Run);
+RunModule("cli_exit_codes", CliExitCodeTests.Run);
 
 var smoke = new TestDispositionLedgerWriter();
 smoke.Append("config", "ConfigResolver", "pass", "EXACT", slice: "S8");
 smoke.Append("embedder", "Embedder", "pass", "ULP", slice: "S3");
-smoke.Append("chroma", "ChromaStore", "pass", "BOUNDED", slice: "S6");
+smoke.Append("chroma", "ChromaStore", "pass", "BOUNDED", slice: "S7");
 smoke.Append("knowledge_graph", "KnowledgeGraphStore", "pass", "EXACT", slice: "S5c");
 smoke.Append("ids", "IdRecipes", "pass", "EXACT", slice: "S1");
 smoke.Append("wal", "WalWriter", "pass", "EXACT", slice: "S10");
@@ -70,8 +72,16 @@ return 0;
 
 void RunModule(string module, Action run)
 {
-    try { run(); }
-    catch (Exception ex) { failures.Add(new InvalidOperationException($"{module}: {ex.Message}", ex)); }
+    try
+    {
+        run();
+        Console.WriteLine($"  {module}: ok");
+    }
+    catch (Exception ex)
+    {
+        failures.Add(new InvalidOperationException($"{module}: {ex.Message}", ex));
+        Console.Error.WriteLine($"  {module}: FAIL — {ex.Message}");
+    }
 }
 
 void RunSuite(string module, Action<TestDispositionLedgerWriter> run)
