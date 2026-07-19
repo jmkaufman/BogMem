@@ -33,7 +33,13 @@ public static class PyText
     public static string FromRunes(int[] runes, int start, int count)
     {
         var sb = new System.Text.StringBuilder(count + 8);
-        for (int i = start; i < start + count; i++) sb.Append(char.ConvertFromUtf32(runes[i]));
+        for (int i = start; i < start + count; i++)
+        {
+            // Python str legally holds lone surrogates (e.g. JSON \ud800 relayed
+            // by MCP clients, #1235); ConvertFromUtf32 rejects them.
+            if (runes[i] is >= 0xD800 and <= 0xDFFF) sb.Append((char)runes[i]);
+            else sb.Append(char.ConvertFromUtf32(runes[i]));
+        }
         return sb.ToString();
     }
 

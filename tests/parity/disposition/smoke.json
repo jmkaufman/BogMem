@@ -18,6 +18,22 @@
       "Slice": "S3"
     },
     {
+      "TestId": "chroma",
+      "Module": "ChromaStore",
+      "Status": "pass",
+      "Rule": "BOUNDED",
+      "Reason": null,
+      "Slice": "S6"
+    },
+    {
+      "TestId": "knowledge_graph",
+      "Module": "KnowledgeGraphStore",
+      "Status": "pass",
+      "Rule": "EXACT",
+      "Reason": null,
+      "Slice": "S5c"
+    },
+    {
       "TestId": "ids",
       "Module": "IdRecipes",
       "Status": "pass",
