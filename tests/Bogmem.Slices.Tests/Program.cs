@@ -40,7 +40,7 @@ RunModule("model", ModelInventoryTests.Run);
 var smoke = new TestDispositionLedgerWriter();
 smoke.Append("config", "ConfigResolver", "pass", "EXACT", slice: "S8");
 smoke.Append("embedder", "Embedder", "pass", "ULP", slice: "S3");
-smoke.Append("chroma", "ChromaStore", "pass", "BOUNDED", slice: "S6");
+smoke.Append("chroma", "ChromaStore", "pass", "BOUNDED", slice: "S7");
 smoke.Append("knowledge_graph", "KnowledgeGraphStore", "pass", "EXACT", slice: "S5c");
 smoke.Append("ids", "IdRecipes", "pass", "EXACT", slice: "S1");
 smoke.Append("wal", "WalWriter", "pass", "EXACT", slice: "S10");

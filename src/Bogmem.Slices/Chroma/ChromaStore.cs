@@ -7,5 +7,5 @@ public sealed class ChromaStore : IAnnIndex
  public int Count=>items.Count;
  public IReadOnlyList<(string Id,float Distance)> Search(ReadOnlySpan<float> query,int limit){var q=query.ToArray();return items.Select((x,i)=>(x.Id,Distance:CosineDistance(q,x.Vector),Index:i)).OrderBy(x=>x.Distance).ThenBy(x=>x.Index).Take(Math.Max(0,limit)).Select(x=>(x.Id,x.Distance)).ToArray();}
  public static double Jaccard(IEnumerable<string> a,IEnumerable<string> b){var x=a.ToHashSet();var y=b.ToHashSet();return x.Count==0&&y.Count==0?1.0:x.Intersect(y).Count()/(double)x.Union(y).Count();}
- private static float CosineDistance(float[] a,float[] b){double dot=0,an=0,bn=0;for(var i=0;i<Math.Min(a.Length,b.Length);i++){dot+=a[i]*b[i];an+=a[i]*a[i];bn+=b[i]*b[i];}return (float)(1-dot/(Math.Sqrt(an)*Math.Sqrt(bn)));}
+ private static float CosineDistance(float[] a,float[] b){double dot=0,an=0,bn=0;for(var i=0;i<Math.Min(a.Length,b.Length);i++){dot+=(double)a[i]*b[i];an+=(double)a[i]*a[i];bn+=(double)b[i]*b[i];}if(an==0||bn==0)return an==bn?0:1;var similarity=dot/(Math.Sqrt(an)*Math.Sqrt(bn));return (float)(1-Math.Clamp(similarity,-1,1));}
 }
