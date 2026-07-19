@@ -22,7 +22,7 @@
       "module": "dedup",
       "status": "pass",
       "rule": "EXACT",
-      "reason": "/Users/demouser/core/gitroot/BogMem/run-mempalace-to-bogmem-v3-constellation-012/codex-cli-5-6-sol-coder/tests/parity/disposition/gap_ledger.json",
+      "reason": "tests/parity/disposition/gap_ledger.json",
       "slice": "S5a"
     }
   ]

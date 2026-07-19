@@ -69,6 +69,7 @@ public static class DedupGrouperTests
                 ? "both boundaries straddled; gap ledger records full extent"
                 : "terminal gap after full-palace exhaustion");
 
+        var gapRel = Path.Combine("tests", "parity", "disposition", "gap_ledger.json");
         var gapPath = TestSupport.PathUnderRepo("tests", "parity", "disposition", "gap_ledger.json");
         gap.Write(gapPath);
         var loaded = GapLedger.Load(gapPath);
@@ -76,9 +77,10 @@ public static class DedupGrouperTests
         TestSupport.AssertTrue(loaded!.ExhaustionConfirmed && loaded.CoveredComparesExact, "gap ledger flags");
         TestSupport.AssertTrue(coverage.DistanceLineStraddled || !string.IsNullOrEmpty(gap.MissedBoundary), "boundary or gap");
 
+        // Relative pointer only — absolute worktree paths make disposition non-portable across seats.
         TestSupport.WriteModuleLedger("dedup", "S5a",
             ("dedup_grouper_golden", "pass", "EXACT", null),
             ("dedup_boundary", "pass", "EXACT", coverage.DistanceLineStraddled ? null : "gap in gap_ledger.json"),
-            ("dedup_gap_ledger", "pass", "EXACT", gapPath));
+            ("dedup_gap_ledger", "pass", "EXACT", gapRel));
     }
 }

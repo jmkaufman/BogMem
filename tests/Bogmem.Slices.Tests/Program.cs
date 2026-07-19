@@ -70,8 +70,16 @@ return 0;
 
 void RunModule(string module, Action run)
 {
-    try { run(); }
-    catch (Exception ex) { failures.Add(new InvalidOperationException($"{module}: {ex.Message}", ex)); }
+    try
+    {
+        run();
+        Console.WriteLine($"  {module}: ok");
+    }
+    catch (Exception ex)
+    {
+        failures.Add(new InvalidOperationException($"{module}: {ex.Message}", ex));
+        Console.Error.WriteLine($"  {module}: FAIL — {ex.Message}");
+    }
 }
 
 void RunSuite(string module, Action<TestDispositionLedgerWriter> run)
