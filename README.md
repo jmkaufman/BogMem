@@ -6,7 +6,8 @@ BogMem is the dotnet-10 port of MemPalace's parity surfaces. The solution contai
 
 ```bash
 dotnet restore Bogmem.sln
-dotnet build Bogmem.sln
+dotnet build Bogmem.sln -c Release
+dotnet test Bogmem.sln -c Release
 dotnet run --project src/Bogmem.Cli -- --help
 dotnet run --project src/Bogmem.Cli -- parity config --report parity_report.json
 ```
