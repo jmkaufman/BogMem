@@ -1,41 +1,38 @@
-﻿# Current-state briefing — integration merge landscape (run 012)
+# Current-state briefing — grok-cli-grok-build, remediation cycle 1 (run 012)
 
-## Merge state
-- Integration branch: `agent/openai-gpt-5-5-integration/run-mempalace-to-bogmem-v3-constellation-012`.
-- Merged cleanly: `codex-cli-5-6-sol-coder` then `grok-cli-grok-build`.
-- `local-claude-code-claude-fable-5` had an additive conflict only in this memory file; source/test files did not require semantic conflict resolution.
-- No queued branch was observed modifying `golden/` during merge output; keep `golden/` read-only.
+## Owned map (after remediation cycle 1)
 
-## Lane areas now present
-- Harness/CLI foundation: comparison dispatch, corpus JSONL replay, parity reports, disposition ledgers, D1/D2/D3 interfaces, CLI help/parity entrypoints.
-- S8 config: file/env precedence and legacy boolean coercion.
-- S3 embedding: prefix/tokenizer seam, 768-to-384 float32 normalization, batch padding seam.
-- S7 Chroma/ANN: deterministic cosine ANN and D3 guard helpers.
-- S5c knowledge graph: SQLite temporal graph with add/query/invalidate/timeline; explicit recordedAt used for golden replay.
-- S1 IDs: length-prefixed SHA recipes (rune counts, None→"None", drawer 24 / triple 12), CLI parity on `golden/ids/`.
-- S10 WAL: Python-shaped JSONL audit lines with redaction and ensure_ascii escapes.
-- S4 search: BM25 k1=1.5/b=0.75, hybrid 0.6/0.4, closet boosts, ordinal-stable ordering.
-- S5a dedup: threshold 0.15, min group 5, `tests/parity/disposition/gap_ledger.json`; self-slot occupancy is intentional.
-- S9 MCP: `McpServer.cs` plus `tools.json`; 36 tools / 14 mutating; error codes -32002/-32003/-32000; missing version→oldest, unrecognized→newest.
-- S13 deferred backends: UUID5 oracle staged under `testdata/deferred_ids/oracle.jsonl`, not `golden/`.
-- S2 chunkers: window/convo/diary exact vs `golden/chunks/{window,convo,diary}`.
-- S11 locking: POSIX `open(2)`/`flock(2)` implementation exact vs `golden/locks`.
-- S6 storage: graph files and sqlite_exact exact vs `golden/graph_files` and `golden/sqlite_exact`.
-- S5b dynamics: strict-zero float32 ULP vs `golden/dynamics`.
-- S12 spellcheck: `ISpeller`/`Speller` bounded D2 agreement vs `golden/spellcheck`.
+- **S1** `src/Bogmem.Slices/Ids/IdRecipes.cs`, **S10** `Wal/WalWriter.cs`, **S4** `Search/Searcher.cs`, **S5a** `Dedup/{DedupGrouper,GapLedger}.cs`, **S9** `Mcp/McpServer.cs`, **S13** `DeferredBackends/DeferredIdOracle.cs` — all green since cycle 0.
+- **CLI** `src/Bogmem.Cli/` — now the full parity surface:
+  - `Program.cs` is a one-liner delegating to `CliMain.Run(args, stdout, stderr, cwd)` (public, in-process testable).
+  - `ParityRunner.cs` (original 7 modules) + `ParityRunner.Modules.cs` (10 more: chunks, dates, dynamics, locks, spellcheck, storage, model, embedding, chroma, kg) — public partial class; all 17 golden modules replay via `bogmem parity <module>`.
+  - `tests/Bogmem.Slices.Tests/Cli/CliExitCodeTests.cs` — exit-code contract checks + a loop replaying ALL `ParityRunner.KnownModules` in-process, so `dotnet test` and the CLI can never disagree again (verifier claim C5).
 
-## Conflict/merge landmines
-- `golden/` is vendored oracle evidence and must remain read-only. Run-authored evidence belongs under `tests/parity/disposition/` or approved `testdata/` paths.
-- Running the console suite may rewrite `tests/parity/disposition/dedup.json` with an absolute worktree path in a reason string; revert that path churn rather than committing it.
-- Gap-ledger pointers should stay relative (`tests/parity/disposition/gap_ledger.json`).
-- POSIX locking intentionally avoids FileStream share emulation; do not simplify it.
-- SqliteExactStore scoring and dynamics arithmetic are fixture-sensitive; do not reorder float32 operations.
-- MCP version list is newest-first (`[0]` newest, `[^1]` oldest); semantic JSON equality is used for golden compares.
-- NU1903 for SQLitePCLRaw is known/non-blocking for parity checks.
-- `rg` is unavailable in this environment; use `grep`/`find`.
+## Remediation cycle 1 — what was fixed and why
 
-## Checks to adjudicate this integration
-- Primary command: `dotnet run --project tests/Bogmem.Slices.Tests` (custom console runner).
-- Additional solution check used by lanes: `dotnet test Bogmem.sln -c Release`.
-- CLI parity evidence lanes reported: `bogmem parity {ids,wal,search,dedup,mcp,deferred_ids}` passing; other slice CLI replay may still be incomplete.
-- Parity validation owns any final `parity_report.json`; integration should not author it unless explicitly assigned.
+- **C6 (exit codes)**: unknown module/option/command → exit 2; `--golden <path>` is now parsed (accepts the golden dir itself or a root containing golden/); nonexistent or corpus-less `--golden` → `CorpusException` → exit 2 (previously the flag was silently ignored and the run "passed" against the default corpus). Missing corpus files are exit 2, not exit-1 findings. Parity mismatch (incl. replay exceptions) stays exit 1.
+- **C5 (coverage)**: wired the 10 remaining modules by porting the test suite's replay logic verbatim (comparison semantics copied from tests/Bogmem.Slices.Tests — keep them in sync if a test changes). "storage" = graph_files + sqlite_exact corpora. embedding = structural PLACEHOLDER (ONNX bytes not vendored; vector replay impossible — same stance as the test suite). chroma = BOUNDED Jaccard ≥ 0.8 vs the legacy HNSW capture (exact distances are NOT reproducible: legacy is float32 hnswlib, ours is a double-accumulated exact scan).
+- **KG parity defects found by wiring kg replay** (fixed in `src/Bogmem.Slices/KnowledgeGraph/KnowledgeGraphStore.cs`; another lane's file, but the golden oracle proves both):
+  1. `Query` ordered by valid_from; legacy returns insertion (rowid) order — golden/kg query vectors encode it. Now `ORDER BY rowid`.
+  2. `current` was an as-of window test; legacy means "still open" (`valid_to is null`) — golden marks the closed Acme triple current=false at as_of 2023. Now `t.ValidTo is null`.
+  Nothing replayed golden/kg before (smoke only), which is why both survived integration.
+
+## Landmines
+
+- `golden/` is vendored oracle evidence — READ-ONLY. Run-authored evidence goes under `tests/parity/disposition/`; deferred oracle emits to `testdata/deferred_ids/` (stack-conformance allowlist).
+- `ParityRunner`/helpers are in the GLOBAL namespace; `CliMain` is in `Bogmem.Cli`. The test project references the Bogmem.Cli exe project — fine, each assembly keeps its own top-level Program.
+- `dotnet test` now runs all 17 CLI replays; deferred_ids re-emits `testdata/deferred_ids/oracle.jsonl` each run (idempotent, no git churn).
+- Console suite may rewrite `tests/parity/disposition/dedup.json` with an absolute worktree path in a reason string; revert that churn rather than committing it.
+- Running `bogmem parity` outside a tree containing `golden/` is exit 2 by design.
+- NU1903 on SQLitePCLRaw is known/non-blocking. Chunker WARNING lines on stderr during tests are expected fixture behavior. `rg` unavailable here; use grep/find.
+
+## Checks
+
+- `dotnet run --project tests/Bogmem.Slices.Tests -c Release` — full console suite (includes cli_exit_codes + 17-module replay).
+- Verifier repros: `parity nosuchmodule` → 2; `parity ids --golden /nonexistent` → 2 with stderr naming the missing dir; loop over all 17 modules → all "passed", exit 0.
+
+## State
+
+- **Done:** C6 + C5 fixed and reproduced with the verifier's exact commands; full suite green.
+- **Known incomplete:** embedding stays PLACEHOLDER until real ONNX inference + model bytes exist; chroma is BOUNDED (Jaccard), not distance-exact — honest ceilings, not bugs.
+- **Deliberately deferred:** live qdrant/milvus/pgvector comparisons (S13 PLACEHOLDER).
