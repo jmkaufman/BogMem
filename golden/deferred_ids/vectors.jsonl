@@ -1,0 +1,3 @@
+{"id": "qdrant_uuid5", "input": {"backend": "qdrant", "value": "drawer:/path/a1:0"}, "expected": {"id": "5f46e77b-c778-5a33-869b-2fb4e2da1748", "notes": "RFC-4122-v5 uuid; deferred from S1 comparison"}}
+{"id": "milvus_id", "input": {"backend": "milvus", "value": "milvus:doc1"}, "expected": {"id": "80ecc671-3854-5594-92a5-71368b8b7581", "notes": "surrogatepass hasher deferred; uuid5 oracle placeholder"}}
+{"id": "pgvector_id", "input": {"backend": "pgvector", "value": "pg:doc2"}, "expected": {"id": "5a6f87c0-b467-5cd2-85d5-0ffade3fcc6f", "notes": "surrogatepass hasher deferred; uuid5 oracle placeholder"}}

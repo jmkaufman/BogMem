@@ -1,0 +1,31 @@
+{
+  "schema": "bogmem.golden_manifest.v1",
+  "module": "config",
+  "pin_label": "a4747d7 (post-v3.5.0, code == HEAD b060dda)",
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "capture_tool_version": "1",
+  "frozen_now": "2026-01-01T00:00:00",
+  "tz": "UTC",
+  "platform": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "python": "3.9.6"
+  },
+  "dependency_versions": {
+    "chromadb": "unknown",
+    "numpy": "2.0.2",
+    "dateutil": "2.9.0.post0",
+    "autocorrect": "unknown",
+    "yaml": "6.0.3",
+    "tokenizers": "absent",
+    "huggingface_hub": "absent",
+    "mempalace": "3.5.0"
+  },
+  "inputs_source": "env x file matrix over MempalaceConfig properties (per-property precedence is the contract: backend file->env->default, most others env->file->default, chunk trio file-only)",
+  "notes": "expected.* omits palace_path when neither env nor file sets it (default expands the capture host HOME). min_chunk_size_explicit is the presence sentinel (legacy None-vs-int).",
+  "files": {
+    "vectors.jsonl": "e1d50850fd52cfd5b395dfcd04e104e709ab6a0c94dfb4e9e6918e8e72cee8f2"
+  },
+  "corpus_schema": "bogmem.golden.config.v1"
+}

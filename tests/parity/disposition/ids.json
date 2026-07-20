@@ -1,0 +1,29 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "ids_recipes_golden",
+      "module": "ids",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S1"
+    },
+    {
+      "test_id": "ids_codepoints",
+      "module": "ids",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "covered_by_golden",
+      "slice": "S1"
+    },
+    {
+      "test_id": "ids_surrogatepass",
+      "module": "ids",
+      "status": "not_applicable",
+      "rule": "EXACT",
+      "reason": "deferred to S13",
+      "slice": "S1"
+    }
+  ]
+}

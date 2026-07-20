@@ -1,0 +1,29 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "mcp_wire_golden",
+      "module": "mcp",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S9"
+    },
+    {
+      "test_id": "mcp_error_codes",
+      "module": "mcp",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "covered_by_golden\u002Bsynthetic",
+      "slice": "S9"
+    },
+    {
+      "test_id": "mcp_version_fallback",
+      "module": "mcp",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "covered_by_golden",
+      "slice": "S9"
+    }
+  ]
+}

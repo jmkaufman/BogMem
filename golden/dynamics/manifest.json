@@ -1,0 +1,19 @@
+{
+  "schema": "bogmem.golden_manifest.v1",
+  "module": "dynamics",
+  "pin_label": "a4747d7 (post-v3.5.0, code == HEAD b060dda)",
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "capture_tool_version": "1",
+  "frozen_now": "2026-01-01T00:00:00",
+  "tz": "UTC",
+  "platform": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "python": "3.9.6"
+  },
+  "staging_note": "Source-repo oracle captured by the mempalace capture harness from the pinned legacy commit, authored under docs/porting/golden. This is the canonical corpus ASE vendors (consume-only doctrine); vendored scripts originate from run-005's proven claude-fable-lane captures.",
+  "files": {
+    "vectors.jsonl": "12c5994df882e16fbb851a81b580ebafc894ace76f16a0406d973bb24b59ec50"
+  }
+}

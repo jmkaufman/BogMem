@@ -1,0 +1,4 @@
+a4747d7ffc7818684f01ac96c886ff6a654dd301 a4747d7 (post-v3.5.0, code == HEAD b060dda)
+# The single legacy mempalace commit every golden fixture in this tree was captured from.
+# Every golden/<module>/manifest.json must cite this sha; a mismatch means a stale or
+# mixed-pin corpus and blocks sign-off.

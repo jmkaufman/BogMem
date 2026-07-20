@@ -1,0 +1,4 @@
+using System.Text.Json;
+namespace Bogmem.Harness;
+public sealed record DispositionRow(string TestId,string Module,string Status,string Rule,string? Reason=null,string? Slice=null);
+ public sealed class TestDispositionLedgerWriter { private readonly List<DispositionRow> rows=[]; public void Append(string testId,string module,string status,string rule,string? reason=null,string? slice=null)=>rows.Add(new(testId,module,status,rule,reason,slice)); public void AppendSlice(string slice,IEnumerable<DispositionRow> entries)=>rows.AddRange(entries.Select(x=>x with {Slice=slice})); public void Write(string path){Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!); File.WriteAllText(path,JsonSerializer.Serialize(new {schema="ase.test_disposition_ledger.v1",rows=rows.ToArray()},new JsonSerializerOptions{WriteIndented=true,PropertyNamingPolicy=JsonNamingPolicy.SnakeCaseLower}));} public IReadOnlyList<DispositionRow> Rows=>rows; }

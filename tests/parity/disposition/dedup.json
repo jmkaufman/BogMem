@@ -1,0 +1,29 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "dedup_grouper_golden",
+      "module": "dedup",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S5a"
+    },
+    {
+      "test_id": "dedup_boundary",
+      "module": "dedup",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S5a"
+    },
+    {
+      "test_id": "dedup_gap_ledger",
+      "module": "dedup",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "tests/parity/disposition/gap_ledger.json",
+      "slice": "S5a"
+    }
+  ]
+}

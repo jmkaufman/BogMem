@@ -1,0 +1,38 @@
+{
+  "schema": "bogmem.golden_manifest.v1",
+  "module": "dates",
+  "pin_label": "a4747d7 (post-v3.5.0, code == HEAD b060dda)",
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "capture_tool_version": "1",
+  "frozen_now": "2026-01-01T00:00:00",
+  "tz": "UTC",
+  "platform": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "python": "3.9.6"
+  },
+  "dependency_versions": {
+    "chromadb": "unknown",
+    "numpy": "2.0.2",
+    "dateutil": "2.9.0.post0",
+    "autocorrect": "unknown",
+    "yaml": "6.0.3",
+    "tokenizers": "absent",
+    "huggingface_hub": "absent",
+    "mempalace": "3.5.0"
+  },
+  "inputs_source": "mirrors DateParsingParityTests cases + legacy tests/test_miner.py slash-lock corpus; expected values computed by miner._extract_content_date at the pin under TZ=UTC",
+  "notes": "mtime case: harness must materialize a file with mtime_epoch_utc and interpret it in UTC. dateutil version recorded in dependency_versions \u2014 edge parses are version-sensitive.",
+  "files": {
+    "vectors.jsonl": "3ff43c9b2b14d43b4be1657188209a2955498aade8da4863a59d290869dcb680"
+  },
+  "corpus_schema": "bogmem.golden.dates.v1",
+  "tier_enum": {
+    "filename": 1,
+    "frontmatter": 2,
+    "content_body": 3,
+    "mtime": 4,
+    "none": 5
+  }
+}

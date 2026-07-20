@@ -1,0 +1,85 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "config",
+      "module": "ConfigResolver",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S8"
+    },
+    {
+      "test_id": "embedder",
+      "module": "Embedder",
+      "status": "pass",
+      "rule": "ULP",
+      "reason": null,
+      "slice": "S3"
+    },
+    {
+      "test_id": "chroma",
+      "module": "ChromaStore",
+      "status": "pass",
+      "rule": "BOUNDED",
+      "reason": null,
+      "slice": "S7"
+    },
+    {
+      "test_id": "knowledge_graph",
+      "module": "KnowledgeGraphStore",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S5c"
+    },
+    {
+      "test_id": "ids",
+      "module": "IdRecipes",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S1"
+    },
+    {
+      "test_id": "wal",
+      "module": "WalWriter",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S10"
+    },
+    {
+      "test_id": "search",
+      "module": "Searcher",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S4"
+    },
+    {
+      "test_id": "dedup",
+      "module": "DedupGrouper",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S5a"
+    },
+    {
+      "test_id": "mcp",
+      "module": "McpServer",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S9"
+    },
+    {
+      "test_id": "deferred_ids",
+      "module": "DeferredIdOracle",
+      "status": "not_applicable",
+      "rule": "PLACEHOLDER",
+      "reason": "oracle staged",
+      "slice": "S13"
+    }
+  ]
+}

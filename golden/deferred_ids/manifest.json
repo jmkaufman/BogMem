@@ -1,0 +1,31 @@
+{
+  "schema": "bogmem.golden_manifest.v1",
+  "module": "deferred_ids",
+  "pin_label": "a4747d7 (post-v3.5.0, code == HEAD b060dda)",
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "capture_tool_version": "1",
+  "frozen_now": "2026-01-01T00:00:00",
+  "tz": "UTC",
+  "platform": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "python": "3.9.6"
+  },
+  "dependency_versions": {
+    "chromadb": "unknown",
+    "numpy": "2.0.2",
+    "dateutil": "2.9.0.post0",
+    "autocorrect": "unknown",
+    "yaml": "6.0.3",
+    "tokenizers": "absent",
+    "huggingface_hub": "absent",
+    "mempalace": "3.5.0"
+  },
+  "inputs_source": "python uuid.uuid5(NAMESPACE_URL, ...) oracles for the parked server backends",
+  "notes": "QUARANTINED partition: generated, never compared, and no signed parity row may cite it (deferred-oracle custody).",
+  "files": {
+    "vectors.jsonl": "f14a74d8429edb021b290452ac48a7916ce9c40d9add1afe541de20ab39d9f3f"
+  },
+  "corpus_schema": "bogmem.golden_deferred_ids.v1"
+}

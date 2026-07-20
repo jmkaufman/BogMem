@@ -1,0 +1,485 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "w-empty",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-whitespace-only",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-short-49",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-exact-50",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-simple",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-strip-ends",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-paragraphs",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-no-newlines",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-line-only",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-emoji",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-early-break",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-mid-exact",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-crlf",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-custom-small",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-custom-minfilter",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-overlap-9",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-ws-between",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-astral-boundary",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-err-overlap-ge-size",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-err-zero-size",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-err-neg-overlap",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-err-neg-min",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "w-err-float-size",
+      "module": "chunks/window",
+      "status": "not_applicable(non-int param unrepresentable in typed C# API; legacy ValueError enforced at type level)",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-default",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-override",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-override-zero",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-override-negative",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-env",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-env-ws",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-env-plus",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-env-underscore",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-env-bad",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-env-negative",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "cap-env-zero",
+      "module": "chunks/window",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-exchanges",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-two-quotes-paragraph",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-long-answer-split",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-consecutive-turns",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-blank-lines-kept",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-separator-breaks",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-min-30-exact",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-min-31",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-paragraphs",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-para-long-split",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-linegroup-fallback",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-linegroup-exact-20",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-linegroup-21",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-astral",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-custom",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-crlf-quotes",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-err-zero-size",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "c-err-neg-min",
+      "module": "chunks/convo",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "d-basic",
+      "module": "chunks/diary",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "d-no-headers",
+      "module": "chunks/diary",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "d-header-only",
+      "module": "chunks/diary",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "d-not-a-header",
+      "module": "chunks/diary",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "d-small-chunks",
+      "module": "chunks/diary",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "d-astral",
+      "module": "chunks/diary",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "d-long-header-preview",
+      "module": "chunks/diary",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    },
+    {
+      "test_id": "d-crlf",
+      "module": "chunks/diary",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S2"
+    }
+  ]
+}

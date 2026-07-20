@@ -1,0 +1,9 @@
+{
+  "schema": "ase.dedup_gap_ledger.v1",
+  "final_slice_extent": "0..27",
+  "missed_boundary": "",
+  "exhaustion_confirmed": true,
+  "covered_compares_exact": true,
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "notes": "both boundaries straddled; gap ledger records full extent"
+}

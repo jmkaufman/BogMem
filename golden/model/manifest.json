@@ -1,0 +1,33 @@
+{
+  "schema": "bogmem.golden_manifest.v1",
+  "module": "model",
+  "pin_label": "a4747d7 (post-v3.5.0, code == HEAD b060dda)",
+  "pin_sha": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "capture_tool_version": "1",
+  "frozen_now": "2026-01-01T00:00:00",
+  "tz": "UTC",
+  "platform": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64",
+    "python": "3.9.6"
+  },
+  "dependency_versions": {
+    "chromadb": "1.5.9",
+    "numpy": "2.0.2",
+    "dateutil": "2.9.0.post0",
+    "autocorrect": "absent",
+    "yaml": "6.0.3",
+    "tokenizers": "0.22.2",
+    "huggingface_hub": "1.8.0",
+    "mempalace": "3.5.0"
+  },
+  "inputs_source": "sha256 inventory of the chroma ONNX model cache used for the capture",
+  "notes": "The model bytes ARE part of the oracle: embedding parity is undefined without exactly these files.",
+  "files": {
+    "vectors.jsonl": "f7518ae65d39a5717caad8272e3e69bdf62cdbd5bdaedd794660fb0b2726543c"
+  },
+  "corpus_schema": "bogmem.golden.model_meta.v1",
+  "model": "all-MiniLM-L6-v2",
+  "dims": 384
+}
