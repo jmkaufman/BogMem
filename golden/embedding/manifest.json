@@ -23,12 +23,8 @@
     "mempalace": "3.5.0"
   },
   "inputs_source": "real CPU inference through mempalace.embedding.get_embedding_function() (chroma ONNXMiniLM_L6_V2)",
-  "notes": "Consumable only after the C# EmbeddingPipeline.Forward stub is replaced with real ONNX inference; model bytes pinned by sha256 in golden/model/vectors.jsonl.",
+  "notes": "Consumable only after the C# EmbeddingPipeline.Forward stub is replaced with real ONNX inference (run-007 work item); model bytes pinned by sha256 in golden/model/model_meta.json.",
   "files": {
-    "vectors.jsonl": "1a4cdbb4ba51b79f16789bebb02490b7e6afc6aff297bf8a106a571e9850a8b4"
-  },
-  "corpus_schema": "bogmem.golden.embedding.v1",
-  "model": "minilm",
-  "device": "cpu",
-  "dims": 384
+    "vectors.json": "53bb05407d5a4cfcc6fd37bcbac647b0a0d34301f43c906286818b76186de7dd"
+  }
 }

@@ -25,9 +25,6 @@
   "inputs_source": "sha256 inventory of the chroma ONNX model cache used for the capture",
   "notes": "The model bytes ARE part of the oracle: embedding parity is undefined without exactly these files.",
   "files": {
-    "vectors.jsonl": "f7518ae65d39a5717caad8272e3e69bdf62cdbd5bdaedd794660fb0b2726543c"
-  },
-  "corpus_schema": "bogmem.golden.model_meta.v1",
-  "model": "all-MiniLM-L6-v2",
-  "dims": 384
+    "model_meta.json": "b6d31b5e9dd4e9d3ce46ab9020203eb02e8241a1a4f2754b3654337b6a192890"
+  }
 }

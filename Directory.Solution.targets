@@ -1,8 +1,0 @@
-<Project>
-  <Target Name="RunBogmemConsoleSuiteAfterSolutionVSTest" AfterTargets="VSTest">
-    <MSBuild
-      Projects="tests/Bogmem.Slices.Tests/Bogmem.Slices.Tests.csproj"
-      Targets="RunConsoleSuite"
-      Properties="Configuration=$(Configuration)" />
-  </Target>
-</Project>
