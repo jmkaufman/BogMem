@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  build-test-pack:
+    name: Build, Test, Pack
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore and audit dependencies
+        run: >
+          dotnet restore Bogmem.sln
+          -p:NuGetAudit=true
+          -p:NuGetAuditMode=all
+          -p:WarningsAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904
+
+      - name: Build
+        run: dotnet build Bogmem.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Bogmem.sln --configuration Release --no-build --no-restore --verbosity minimal
+
+      - name: Report dependency vulnerabilities
+        run: dotnet list Bogmem.sln package --vulnerable --include-transitive --no-restore
+
+      - name: Pack
+        shell: bash
+        run: |
+          mkdir -p artifacts/nuget
+          while IFS= read -r project || [[ -n "$project" ]]; do
+            [[ -z "$project" || "$project" =~ ^# ]] && continue
+            dotnet pack "$project" --configuration Release --no-build --no-restore --output artifacts/nuget
+          done < eng/package-projects.txt
+
+      - name: Smoke-test installed tool
+        shell: bash
+        run: |
+          package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Tool.*.nupkg' -print -quit)"
+          if [[ -z "$package_path" ]]; then
+            echo "BogMem.Tool package was not produced." >&2
+            exit 1
+          fi
+
+          package_file="$(basename "$package_path")"
+          package_version="${package_file#BogMem.Tool.}"
+          package_version="${package_version%.nupkg}"
+          tool_path="$RUNNER_TEMP/bogmem-tool"
+          palace_path="$RUNNER_TEMP/bogmem-palace"
+
+          dotnet tool install BogMem.Tool \
+            --tool-path "$tool_path" \
+            --version "$package_version" \
+            --source artifacts/nuget
+
+          BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" init --palace "$palace_path"
+          BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" add \
+            --wing release --room smoke \
+            --content "BogMem package smoke test." \
+            --palace "$palace_path"
+          BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" search \
+            "package smoke" --wing release --palace "$palace_path"
+
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v7
+        with:
+          name: bogmem-nuget-package
+          path: artifacts/nuget/*.nupkg
+          compression-level: 0
+          retention-days: 14

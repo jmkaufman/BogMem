@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix>preview.1</VersionSuffix>
+    <Authors>Beyond Ordinary Software Solutions</Authors>
+    <Company>Beyond Ordinary Software Solutions</Company>
+    <Copyright>Copyright © 2026 Beyond Ordinary Software Solutions</Copyright>
+    <PackageProjectUrl>https://github.com/BeyondOrdinary/BogMem</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/BeyondOrdinary/BogMem</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

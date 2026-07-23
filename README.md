@@ -140,3 +140,12 @@ dotnet run --project src/Bogmem.Cli -- parity config --report parity_report.json
 ```
 
 The frozen oracle under `golden/` is read-only.
+
+Maintainers can find the package and tag workflow in
+[`docs/releasing.md`](docs/releasing.md).
+
+## License
+
+BogMem is licensed under the [Apache License 2.0](LICENSE). Portions derived
+from MemPalace retain their original MIT notice in
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
