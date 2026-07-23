@@ -42,6 +42,14 @@
       "slice": "P1"
     },
     {
+      "test_id": "project_config",
+      "module": "ProjectConfig",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "YAML room routing with explicit overrides",
+      "slice": "P4"
+    },
+    {
       "test_id": "project_miner",
       "module": "ProjectMiner",
       "status": "pass",

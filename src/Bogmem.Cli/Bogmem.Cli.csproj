@@ -4,9 +4,22 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>bogmem</ToolCommandName>
+    <PackageId>BogMem.Tool</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Beyond Ordinary</Authors>
+    <Description>Local-first persistent project memory backed by BogDB.</Description>
+    <PackageTags>bogmem;memory;bogdb;mcp;dotnet-tool</PackageTags>
+    <RepositoryUrl>https://github.com/BeyondOrdinary/BogMem</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Bogmem.Harness/Bogmem.Harness.csproj" />
     <ProjectReference Include="../Bogmem.Slices/Bogmem.Slices.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" Link="README.md" />
   </ItemGroup>
 </Project>

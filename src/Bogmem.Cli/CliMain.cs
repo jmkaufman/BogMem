@@ -45,6 +45,9 @@ public static class CliMain
                 Palace path: --palace, BOGMEM_PALACE_PATH, MEMPALACE_PALACE_PATH,
                              or ~/.bogmem/palace
 
+                Mining config: mempalace.yaml (or .yml; legacy mempal.yaml/.yml also works).
+                               --wing and --room override project configuration.
+
                 Exit codes: 0 = success, 1 = operation/parity failure, 2 = usage/corpus error
 
                 Modules: all, {string.Join(", ", ParityRunner.KnownModules)}
@@ -166,7 +169,7 @@ public static class CliMain
                 WriteJson(stdout, miner.Mine(new ProjectMineRequest(
                     source,
                     parsed.Options.GetValueOrDefault("wing"),
-                    parsed.Options.GetValueOrDefault("room") ?? "general",
+                    parsed.Options.GetValueOrDefault("room"),
                     parsed.Options.GetValueOrDefault("agent") ?? "mempalace",
                     IntOption(parsed, "limit", 0, 0, int.MaxValue),
                     parsed.Flags.Contains("dry-run"),

@@ -7,7 +7,7 @@ verbatim drawers persisted in BogDB, searchable from the CLI or over MCP.
 ## Quick start
 
 ```bash
-# Uses ~/.bogmem/palace unless --palace is supplied.
+# From a source checkout. Uses ~/.bogmem/palace unless --palace is supplied.
 dotnet run --project src/Bogmem.Cli -- init
 
 dotnet run --project src/Bogmem.Cli -- add \
@@ -20,6 +20,20 @@ dotnet run --project src/Bogmem.Cli -- search "why did we choose BogDB?"
 dotnet run --project src/Bogmem.Cli -- sync . --wing myproject
 dotnet run --project src/Bogmem.Cli -- status
 ```
+
+The CLI is also a .NET tool package. Until `BogMem.Tool` is published, pack and
+install it from the checkout:
+
+```bash
+dotnet pack src/Bogmem.Cli -c Release -o ./artifacts/packages
+dotnet tool install --global BogMem.Tool \
+  --version 0.1.0-preview.1 \
+  --add-source ./artifacts/packages
+
+bogmem --help
+```
+
+After the package is published, the `--add-source` option is unnecessary.
 
 Run the persistent MCP server over newline-delimited JSON-RPC on stdio:
 
@@ -41,10 +55,27 @@ Files are stored verbatim using the parity-proven window chunker and legacy
 source/chunk ID recipe. A changed source is replaced atomically, while an
 unchanged rerun performs no writes.
 
-This first miner slice deliberately routes to `general` unless `--room` is
-supplied. Conversation and office-document extraction, YAML room classification,
-are not implemented yet. Use `--dry-run` to inspect mining counts without
-changing the palace.
+Add `mempalace.yaml` to a project root to select its wing and rooms:
+
+```yaml
+wing: checkout_service
+rooms:
+  - name: architecture
+    keywords: [docs, design, decision]
+  - name: backend
+    keywords: [api, database, service]
+  - name: general
+    keywords: []
+```
+
+The miner classifies each source by folder, filename, then keyword frequency in
+the first 2,000 characters. Unmatched sources go to `general`. Explicit
+`--wing` or `--room` values override configuration, and legacy `mempal.yaml`
+and `.yml` names remain supported. Use `--dry-run` to inspect `filesByRoom`
+without changing the palace. A copyable configured project lives under
+[`samples/example-project/`](samples/example-project/).
+
+Conversation and office-document extraction are not implemented yet.
 
 `bogmem sync` previews project-owned drawers whose source was deleted or became
 Git-ignored. Add `--apply` to prune the previewed set; destructive sync requires
@@ -87,6 +118,7 @@ slices from the ASE porting effort.
 dotnet restore Bogmem.sln
 dotnet build Bogmem.sln -c Release
 dotnet test Bogmem.sln -c Release
+dotnet pack src/Bogmem.Cli -c Release
 dotnet run --project src/Bogmem.Cli -- --help
 dotnet run --project src/Bogmem.Cli -- parity config --report parity_report.json
 ```

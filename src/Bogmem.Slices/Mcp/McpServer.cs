@@ -504,7 +504,7 @@ public sealed class McpServer
         var result = new ProjectMiner(_memoryStore!).Mine(new ProjectMineRequest(
             RequiredArg(args, "source"),
             ArgString(args, "wing"),
-            "general",
+            null,
             ArgString(args, "agent") ?? "mempalace",
             ArgInt(args, "limit", 0, 0, int.MaxValue),
             args["dry_run"]?.GetValue<bool>() ?? false));
@@ -516,6 +516,8 @@ public sealed class McpServer
             ["source"] = result.Source,
             ["wing"] = result.Wing,
             ["room"] = result.Room,
+            ["configuration_path"] = result.ConfigurationPath,
+            ["files_by_room"] = JsonSerializer.SerializeToNode(result.FilesByRoom),
             ["files_discovered"] = result.FilesDiscovered,
             ["files_processed"] = result.FilesProcessed,
             ["files_changed"] = result.FilesChanged,

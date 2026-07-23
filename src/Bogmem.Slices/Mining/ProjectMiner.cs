@@ -9,7 +9,7 @@ namespace Bogmem.Slices.Mining;
 public sealed record ProjectMineRequest(
     string SourceDirectory,
     string? Wing = null,
-    string Room = "general",
+    string? Room = null,
     string Agent = "mempalace",
     int Limit = 0,
     bool DryRun = false,
@@ -27,7 +27,9 @@ public sealed record ProjectMineResult(
     int FilesSkipped,
     int DrawersPlanned,
     int DrawersWritten,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    IReadOnlyDictionary<string, int> FilesByRoom,
+    string? ConfigurationPath);
 
 /// <summary>
 /// Mines ordinary project text/code into an <see cref="IMemoryStore"/>.
@@ -73,10 +75,14 @@ public sealed class ProjectMiner(IMemoryStore store)
 
         var source = Path.GetFullPath(Required(request.SourceDirectory, nameof(request.SourceDirectory)));
         if (!Directory.Exists(source)) throw new DirectoryNotFoundException($"Source directory does not exist: {source}");
+        var configuration = ProjectConfig.Load(source);
         var wing = string.IsNullOrWhiteSpace(request.Wing)
-            ? NormalizeWing(new DirectoryInfo(source).Name)
+            ? configuration.Wing
             : Required(request.Wing, nameof(request.Wing));
-        var room = Required(request.Room, nameof(request.Room));
+        var roomOverride = string.IsNullOrWhiteSpace(request.Room)
+            ? null
+            : Required(request.Room, nameof(request.Room));
+        var router = new RoomRouter(configuration);
         var agent = string.IsNullOrWhiteSpace(request.Agent) ? "mempalace" : request.Agent.Trim();
         var warnings = new List<string>();
         var candidates = DiscoverFiles(source, warnings);
@@ -91,6 +97,7 @@ public sealed class ProjectMiner(IMemoryStore store)
         var skipped = candidates.Count - selected.Count;
         var planned = 0;
         var written = 0;
+        var filesByRoom = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         using var palaceLock = FileLock.Acquire(store.Status().DatabasePath);
         foreach (var file in selected)
@@ -122,6 +129,7 @@ public sealed class ProjectMiner(IMemoryStore store)
                 continue;
             }
 
+            var room = roomOverride ?? router.Route(source, file, content);
             var replacement = store.ReplaceSource(
                 wing,
                 room,
@@ -130,6 +138,7 @@ public sealed class ProjectMiner(IMemoryStore store)
                 agent,
                 request.DryRun);
             processed++;
+            filesByRoom[room] = filesByRoom.GetValueOrDefault(room) + 1;
             if (replacement.Changed)
             {
                 changed++;
@@ -143,8 +152,8 @@ public sealed class ProjectMiner(IMemoryStore store)
         }
 
         return new(
-            source, wing, room, request.DryRun, candidates.Count, processed, changed, unchanged,
-            skipped, planned, written, warnings);
+            source, wing, roomOverride ?? "auto", request.DryRun, candidates.Count, processed, changed, unchanged,
+            skipped, planned, written, warnings, filesByRoom, configuration.ConfigurationPath);
     }
 
     private static IReadOnlyList<string> DiscoverFiles(string source, List<string> warnings)
@@ -258,12 +267,6 @@ public sealed class ProjectMiner(IMemoryStore store)
         return relative != ".." &&
                !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
                !Path.IsPathRooted(relative);
-    }
-
-    private static string NormalizeWing(string value)
-    {
-        var normalized = value.Trim().ToLowerInvariant().Replace(' ', '_').Replace('-', '_').Trim('_');
-        return normalized.Length == 0 ? "project" : normalized;
     }
 
     private static string Relative(string root, string path) =>

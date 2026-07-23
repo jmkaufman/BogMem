@@ -1,0 +1,14 @@
+wing: checkout_service
+rooms:
+  - name: architecture
+    description: Design records and system boundaries
+    keywords: [docs, design, architecture, decision]
+  - name: backend
+    description: API, persistence, and service implementation
+    keywords: [api, database, repository, service]
+  - name: testing
+    description: Test strategy and fixtures
+    keywords: [test, tests, fixture]
+  - name: general
+    description: Material that does not fit another room
+    keywords: []

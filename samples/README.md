@@ -10,21 +10,20 @@ Use the CLI from scripts, CI jobs, editor tasks, or a terminal:
 ```bash
 PALACE="$HOME/.bogmem/palace"
 
-dotnet run --project src/Bogmem.Cli -- mine ./my-project \
-  --wing my_project \
+bogmem mine ./my-project \
   --palace "$PALACE"
 
-dotnet run --project src/Bogmem.Cli -- search "where is authentication configured?" \
+bogmem search "where is authentication configured?" \
   --wing my_project \
   --palace "$PALACE"
 
 # Preview first. This never deletes.
-dotnet run --project src/Bogmem.Cli -- sync ./my-project \
+bogmem sync ./my-project \
   --wing my_project \
   --palace "$PALACE"
 
 # Apply requires the explicit project root.
-dotnet run --project src/Bogmem.Cli -- sync ./my-project \
+bogmem sync ./my-project \
   --wing my_project \
   --apply \
   --palace "$PALACE"
@@ -32,6 +31,23 @@ dotnet run --project src/Bogmem.Cli -- sync ./my-project \
 
 Commands emit JSON on stdout. A nonzero exit code means the operation or its
 arguments failed, so callers do not need to parse human-oriented log text.
+From a source checkout, replace `bogmem` with
+`dotnet run --project src/Bogmem.Cli --`.
+
+### Route a project into rooms
+
+Copy [`example-project/mempalace.yaml`](example-project/mempalace.yaml) into a
+project root and edit the wing, room descriptions, and keywords. Then preview
+the routing:
+
+```bash
+bogmem mine samples/example-project --dry-run
+```
+
+The JSON result reports `filesByRoom`, so a script or human can validate the
+taxonomy before writing anything. Folder matches win over filename matches,
+which win over content frequency. `--room one_room` deliberately bypasses
+routing, and `--wing another_wing` overrides only the configured wing.
 
 ## 2. MCP clients and coding agents
 
@@ -69,6 +85,8 @@ flow is:
 
 The current retrieval mode is exact hybrid lexical retrieval, not semantic
 search. Check `mempalace_status.retrieval_mode` instead of assuming a backend.
+`mempalace_mine` uses the same project configuration and returns its
+`files_by_room` distribution.
 
 ## 3. Embedded .NET API
 
