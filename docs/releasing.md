@@ -7,9 +7,19 @@ Package metadata and the default preview version live in
 
 ## Repository setup
 
-Create a repository Actions secret named `NUGET_API_KEY`. Scope the NuGet.org
-key to package push for `BogMem.Tool` and rotate it according to the NuGet.org
-account policy.
+NuGet.org trusted publishing supplies a short-lived API key through GitHub
+Actions OIDC; the repository does not store a NuGet API key. The `bojake`
+NuGet.org owner has a trusted publishing policy with:
+
+- GitHub repository owner: `bojake`
+- Repository: `BogMem`
+- Workflow file: `publish-nuget.yml`
+- Environment: none
+
+The publish workflow grants only `contents: read` and `id-token: write`, then
+uses `NuGet/login@v1` immediately before the package push. If the repository,
+workflow filename, NuGet.org owner, or optional GitHub environment changes,
+update both the NuGet.org policy and the workflow together.
 
 BogMem is licensed under Apache 2.0. Its package carries the Apache license and
 the original MemPalace MIT copyright and permission notice.
