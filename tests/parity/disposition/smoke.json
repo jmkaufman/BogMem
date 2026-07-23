@@ -34,6 +34,14 @@
       "slice": "S5c"
     },
     {
+      "test_id": "bogdb_memory_store",
+      "module": "BogDbMemoryStore",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "persistent CRUD \u002B exact hybrid retrieval",
+      "slice": "P1"
+    },
+    {
       "test_id": "ids",
       "module": "IdRecipes",
       "status": "pass",

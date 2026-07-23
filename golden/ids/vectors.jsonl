@@ -1,0 +1,18 @@
+{"id": "chunk_collision_a", "input": {"kind": "drawer_chunk", "wing": "w", "room": "r", "source_file": "/path/a1", "chunk_index": 23}, "expected": {"id": "drawer_w_r_6dd9bdba0e2b13199585abc6", "preimage": "8:/path/a12:23"}}
+{"id": "chunk_collision_b", "input": {"kind": "drawer_chunk", "wing": "w", "room": "r", "source_file": "/path/a", "chunk_index": 123}, "expected": {"id": "drawer_w_r_8e8fece98d98178556d623c8", "preimage": "7:/path/a3:123"}}
+{"id": "emoji", "input": {"kind": "drawer_chunk", "wing": "w", "room": "r", "source_file": "/x/\ud83d\ude00", "chunk_index": 0}, "expected": {"id": "drawer_w_r_2ae12e8dd3aeb635493ca57b", "preimage": "4:/x/\ud83d\ude001:0"}}
+{"id": "combining", "input": {"kind": "drawer_chunk", "wing": "w", "room": "r", "source_file": "\u00e9", "chunk_index": 1}, "expected": {"id": "drawer_w_r_4eb5d5fcae814467dcf90e67", "preimage": "1:\u00e91:1"}}
+{"id": "content_a", "input": {"kind": "drawer_content", "wing": "foo", "room": "bar", "content": "x"}, "expected": {"id": "drawer_foo_bar_b3b3ef572f672c13f791ee2f", "preimage": "3:foo3:bar1:x"}}
+{"id": "content_b", "input": {"kind": "drawer_content", "wing": "fooba", "room": "r", "content": "x"}, "expected": {"id": "drawer_fooba_r_eea17f3426ccc68f2b1e9571", "preimage": "5:fooba1:r1:x"}}
+{"id": "convo", "input": {"kind": "convo_drawer", "wing": "w", "room": "r", "source_file": "/log.jsonl", "extract_mode": "general", "chunk_index": 5}, "expected": {"id": "drawer_w_r_a5dcf32648d029c723b4fa78", "preimage": "10:/log.jsonl7:general1:5"}}
+{"id": "sentinel", "input": {"kind": "convo_sentinel", "source_file": "/c.jsonl", "extract_mode": "general"}, "expected": {"id": "_reg_210082339f7f0eda5cf03d59", "preimage": "8:/c.jsonl7:general"}}
+{"id": "triple", "input": {"kind": "triple", "sub_id": "s", "predicate": "p", "obj_id": "o", "valid_from": "2026-01-01", "recorded_at": "T12:00:00"}, "expected": {"id": "t_s_p_o_95e46300e394", "preimage": "10:2026-01-019:T12:00:00"}}
+{"id": "none_part", "input": {"kind": "delimited", "parts": [null, "x"]}, "expected": {"id": "e4f2439d48450039a4240f9c", "preimage": "4:None1:x"}}
+{"id": "triple_none_str", "input": {"kind": "triple", "sub_id": "s", "predicate": "p", "obj_id": "o", "valid_from": "None", "recorded_at": "2026-05-30T10:00:00"}, "expected": {"id": "t_s_p_o_cde52b36bcf6", "preimage": "4:None19:2026-05-30T10:00:00"}}
+{"id": "empty_parts", "input": {"kind": "delimited", "parts": ["", ""]}, "expected": {"id": "390feabc786e369e55b90425", "preimage": "0:0:"}}
+{"id": "length_prefix_left", "input": {"kind": "delimited", "parts": ["a", "b|c", "d"]}, "expected": {"id": "6dc82dd6b6a6ef958de413c9c12dc36e7fb1164ebcf05e5078305495b9ef382a", "preimage": "1:a3:b|c1:d"}}
+{"id": "length_prefix_right", "input": {"kind": "delimited", "parts": ["a|b", "c", "d"]}, "expected": {"id": "9b43e9de23cf9292b6ba11c7c2c93cad3dc622073ec2f95e513f2e15ae024f1b", "preimage": "3:a|b1:c1:d"}}
+{"id": "ab_c_demo", "input": {"kind": "delimited", "parts": ["ab", "c"]}, "expected": {"id": "430fb1b4ac43316eca81fab27a1930ab8eff8fef6a1dc7903dce44bbc2790dc5", "preimage": "2:ab1:c"}}
+{"id": "tunnel", "input": {"kind": "tunnel", "source_wing": "a", "source_room": "r1", "target_wing": "b", "target_room": "r2"}, "expected": {"id": "c5d355c719b90616", "preimage": null}}
+{"id": "tunnel_symmetric", "input": {"kind": "tunnel", "source_wing": "b", "source_room": "r2", "target_wing": "a", "target_room": "r1"}, "expected": {"id": "c5d355c719b90616", "preimage": null}}
+{"id": "empty_source", "input": {"kind": "drawer_chunk", "wing": "w", "room": "r", "source_file": "", "chunk_index": 0}, "expected": {"id": "drawer_w_r_1dec49fcb20b2578e4fc86c8", "preimage": "0:1:0"}}

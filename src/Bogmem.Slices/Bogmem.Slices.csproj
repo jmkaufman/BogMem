@@ -15,7 +15,8 @@
     <EmbeddedResource Include="Spellcheck/data/word_count.en.json.gz" LogicalName="Bogmem.Slices.Spellcheck.data.word_count.en.json.gz" />
   </ItemGroup>
   <ItemGroup>
-<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
-<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageReference Include="BogDB.Core" Version="1.2.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
   </ItemGroup>
 </Project>

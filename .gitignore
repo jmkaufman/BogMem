@@ -11,6 +11,16 @@
 *.sln.docstates
 *.env
 
+# The frozen MemPalace oracle is project source, not generated output. Keep it
+# visible even when developer-global or tooling excludes contain broad corpus
+# patterns so clean clones can run the parity suite without external state.
+!golden/
+!golden/**
+
+# ASE seat worktrees contain tool state and credentials; the integrated source
+# belongs in this repository, but the seat directories themselves never do.
+run-mempalace-to-bogmem-*/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
