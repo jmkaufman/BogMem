@@ -17,6 +17,7 @@ dotnet run --project src/Bogmem.Cli -- add \
 
 dotnet run --project src/Bogmem.Cli -- mine . --wing myproject
 dotnet run --project src/Bogmem.Cli -- search "why did we choose BogDB?"
+dotnet run --project src/Bogmem.Cli -- sync . --wing myproject
 dotnet run --project src/Bogmem.Cli -- status
 ```
 
@@ -42,8 +43,27 @@ unchanged rerun performs no writes.
 
 This first miner slice deliberately routes to `general` unless `--room` is
 supplied. Conversation and office-document extraction, YAML room classification,
-and orphan pruning are not implemented yet. Use `--dry-run` to inspect counts
-without changing the palace.
+are not implemented yet. Use `--dry-run` to inspect mining counts without
+changing the palace.
+
+`bogmem sync` previews project-owned drawers whose source was deleted or became
+Git-ignored. Add `--apply` to prune the previewed set; destructive sync requires
+an explicit project directory. Manual memories and drawers migrated from an
+older BogMem schema are protected.
+
+## Integration examples
+
+See [`samples/`](samples/README.md) for copyable CLI automation, a generic MCP
+host configuration, and a runnable embedded .NET lifecycle:
+
+```bash
+dotnet run --project samples/Bogmem.Quickstart
+```
+
+The frozen parity layer is evidence about the port, not an endorsement of every
+MemPalace behavior. Product APIs may correct inherited bugs when the divergence
+is tested and documented; see
+[`docs/parity-boundary.md`](docs/parity-boundary.md).
 
 ### Retrieval status
 

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bogmem.Slices.Mining;
 using Bogmem.Slices.Storage;
+using Bogmem.Slices.Sync;
 
 namespace Bogmem.Slices.Mcp;
 
@@ -47,7 +48,7 @@ public sealed class McpServer
         "mempalace_status", "mempalace_list_wings", "mempalace_list_rooms", "mempalace_get_taxonomy",
         "mempalace_search", "mempalace_check_duplicate", "mempalace_add_drawer",
         "mempalace_delete_drawer", "mempalace_delete_by_source", "mempalace_get_drawer",
-        "mempalace_list_drawers", "mempalace_update_drawer", "mempalace_mine",
+        "mempalace_list_drawers", "mempalace_update_drawer", "mempalace_mine", "mempalace_sync",
     };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -149,6 +150,8 @@ public sealed class McpServer
                         ? "Exact local hybrid lexical search over persistent BogDB drawers. Returns verbatim content with distance and ranking scores."
                         : _memoryStore is not null && t.Name == "mempalace_mine"
                             ? "Mine ordinary project text and code into persistent BogDB drawers. Respects Git excludes, chunks verbatim, and atomically replaces each changed source. Only mode='projects' is implemented."
+                            : _memoryStore is not null && t.Name == "mempalace_sync"
+                                ? "Preview or prune project-owned drawers whose files were deleted or became Git-ignored. Manual memories are protected; apply requires an explicit project_dir."
                         : t.Description,
                     ["inputSchema"] = ProductInputSchema(t),
                 });
@@ -329,6 +332,7 @@ public sealed class McpServer
             "mempalace_list_drawers" => ListDrawersResult(args),
             "mempalace_update_drawer" => UpdateDrawerResult(args),
             "mempalace_mine" => MineResult(args),
+            "mempalace_sync" => SyncResult(args),
             _ => new JsonObject
             {
                 ["success"] = false,
@@ -526,15 +530,66 @@ public sealed class McpServer
     private JsonNode ProductInputSchema(ToolSpec tool)
     {
         var schema = tool.InputSchema.DeepClone();
-        if (_memoryStore is null || tool.Name != "mempalace_mine") return schema;
-        if (schema["properties"]?["mode"] is JsonObject mode)
+        if (_memoryStore is null) return schema;
+        if (tool.Name == "mempalace_mine" && schema["properties"]?["mode"] is JsonObject mode)
         {
             mode["enum"] = new JsonArray("projects");
             mode["description"] = "Project code/docs ingestion. This is the only mode currently implemented by BogMem.";
         }
-        if (schema["properties"] is JsonObject properties)
+        if (tool.Name == "mempalace_mine" && schema["properties"] is JsonObject properties)
             properties.Remove("extract");
+        if (tool.Name == "mempalace_sync" && schema["properties"] is JsonObject syncProperties)
+        {
+            syncProperties["project_dir"]!["description"] =
+                "Project root to scope the preview. Required when apply=true; optional preview-only auto-detection otherwise.";
+            syncProperties["apply"]!["description"] =
+                "Delete the previewed project-owned drawers. Default false. Requires project_dir.";
+        }
         return schema;
+    }
+
+    private JsonObject SyncResult(JsonObject args)
+    {
+        try
+        {
+            var report = new ProjectSync(_memoryStore!).Run(new ProjectSyncRequest(
+                ArgString(args, "project_dir"),
+                ArgString(args, "wing"),
+                args["apply"]?.GetValue<bool>() ?? false));
+            var bySource = new JsonObject();
+            foreach (var entry in report.BySource.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+                bySource[entry.Key] = entry.Value;
+            var candidates = new JsonArray();
+            foreach (var candidate in report.Candidates)
+                candidates.Add(new JsonObject
+                {
+                    ["source_file"] = candidate.SourceFile,
+                    ["reason"] = candidate.Reason,
+                    ["drawers"] = candidate.Drawers,
+                });
+            return new JsonObject
+            {
+                ["success"] = true,
+                ["scanned"] = report.Scanned,
+                ["kept"] = report.Kept,
+                ["gitignored"] = report.GitIgnored,
+                ["missing"] = report.Missing,
+                ["no_source"] = report.NoSource,
+                ["out_of_scope"] = report.OutOfScope,
+                ["protected"] = report.Protected,
+                ["unverifiable"] = report.Unverifiable,
+                ["removed_drawers"] = report.RemovedDrawers,
+                ["dry_run"] = report.DryRun,
+                ["by_source"] = bySource,
+                ["candidates"] = candidates,
+                ["project_roots"] = new JsonArray(report.ProjectRoots.Select(root => (JsonNode?)JsonValue.Create(root)).ToArray()),
+                ["warnings"] = new JsonArray(report.Warnings.Select(warning => (JsonNode?)JsonValue.Create(warning)).ToArray()),
+            };
+        }
+        catch (Exception ex) when (ex is ArgumentException or DirectoryNotFoundException)
+        {
+            return new JsonObject { ["success"] = false, ["error"] = ex.Message };
+        }
     }
 
     private IReadOnlyList<MemoryDrawer> AllDrawers()
@@ -560,6 +615,7 @@ public sealed class McpServer
         ["added_by"] = drawer.AddedBy,
         ["filed_at"] = drawer.FiledAt,
         ["id_recipe"] = drawer.IdRecipe,
+        ["origin"] = drawer.Origin,
     };
 
     private static string RequiredArg(JsonObject args, string name, bool trim = true) =>

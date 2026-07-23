@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Bogmem.Slices.Mcp;
 using Bogmem.Slices.Mining;
 using Bogmem.Slices.Storage;
+using Bogmem.Slices.Sync;
 
 namespace Bogmem.Cli;
 
@@ -31,6 +32,7 @@ public static class CliMain
                   add --wing name --room name --content text [--source-file path] [--palace path]
                   mine directory [--wing name] [--room name] [--agent name] [--limit n]
                                  [--max-chunks-per-file n] [--dry-run] [--palace path]
+                  sync [directory] [--wing name] [--apply] [--palace path]
                   search "query" [--wing name] [--room name] [--limit n] [--palace path]
                   status [--palace path]
                   list [--wing name] [--room name] [--limit n] [--offset n] [--palace path]
@@ -172,6 +174,22 @@ public static class CliMain
                 return 0;
             }
 
+            case "sync":
+            {
+                ValidateOptions(parsed, ["palace", "wing"], ["apply"]);
+                if (parsed.Positionals.Count > 1)
+                    throw new ArgumentException("sync accepts at most one project directory");
+                var projectDirectory = parsed.Positionals.Count == 0
+                    ? null
+                    : Path.GetFullPath(parsed.Positionals[0], workingDirectory);
+                using var store = new BogDbMemoryStore(palace);
+                WriteJson(stdout, new ProjectSync(store).Run(new ProjectSyncRequest(
+                    projectDirectory,
+                    parsed.Options.GetValueOrDefault("wing"),
+                    parsed.Flags.Contains("apply"))));
+                return 0;
+            }
+
             case "search":
             {
                 ValidateOptions(parsed, ["palace", "query", "wing", "room", "source-file", "limit", "max-distance"]);
@@ -286,7 +304,7 @@ public static class CliMain
                 continue;
             }
             var name = arg[2..];
-            if (name is "read-only" or "dry-run") { flags.Add(name); continue; }
+            if (name is "read-only" or "dry-run" or "apply") { flags.Add(name); continue; }
             if (i + 1 >= args.Length || args[i + 1].StartsWith("--", StringComparison.Ordinal))
                 throw new ArgumentException($"Option '{arg}' requires a value.");
             options[name] = args[++i];

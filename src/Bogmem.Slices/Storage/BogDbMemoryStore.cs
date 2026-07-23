@@ -48,7 +48,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
             if (existing is not null) return new(existing, Created: false);
             var drawer = new MemoryDrawer(
                 id, wing, room, content, sourceFile, addedBy,
-                DateTimeOffset.UtcNow.ToString("O"), IdRecipes.IdRecipe, _embedder.Embed(content));
+                DateTimeOffset.UtcNow.ToString("O"), IdRecipes.IdRecipe, "manual", _embedder.Embed(content));
             Upsert(drawer);
             return new(drawer, Created: true);
         }
@@ -81,6 +81,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
                 addedBy,
                 filedAt,
                 IdRecipes.IdRecipe,
+                "project",
                 _embedder.Embed(content));
         }).ToArray();
 
@@ -201,6 +202,37 @@ public sealed class BogDbMemoryStore : IMemoryStore
         }
     }
 
+    public int DeleteMany(IReadOnlyCollection<string> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        var unique = ids
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (unique.Length == 0) return 0;
+
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            var existing = ReadAll().Select(drawer => drawer.Id).ToHashSet(StringComparer.Ordinal);
+            var targets = unique.Where(existing.Contains).ToArray();
+            if (targets.Length == 0) return 0;
+            _connection.ExecuteWriteTransaction(() =>
+            {
+                foreach (var id in targets)
+                {
+                    var result = _connection.Query(
+                        "MATCH (d:Drawer) WHERE d.id = $id DELETE d",
+                        new Dictionary<string, object?> { ["id"] = id });
+                    if (!result.IsSuccess)
+                        throw new InvalidOperationException($"BogDB query failed: {result.ErrorMessage}");
+                }
+            });
+            return targets.Length;
+        }
+    }
+
     public int DeleteBySource(string sourceFile, bool dryRun = true)
     {
         sourceFile = Required(sourceFile, nameof(sourceFile));
@@ -241,11 +273,21 @@ public sealed class BogDbMemoryStore : IMemoryStore
 
     private void EnsureSchema()
     {
-        if (_connection.HasTable(Table)) return;
-        Execute(
-            "CREATE NODE TABLE Drawer(" +
-            "id STRING PRIMARY KEY, wing STRING, room STRING, content STRING, " +
-            "source_file STRING, added_by STRING, filed_at STRING, id_recipe STRING, embedding FLOAT[])");
+        if (!_connection.HasTable(Table))
+        {
+            Execute(
+                "CREATE NODE TABLE Drawer(" +
+                "id STRING PRIMARY KEY, wing STRING, room STRING, content STRING, " +
+                "source_file STRING, added_by STRING, filed_at STRING, id_recipe STRING, " +
+                "origin STRING, embedding FLOAT[])");
+            return;
+        }
+
+        var originProbe = _connection.Query("MATCH (d:Drawer) RETURN d.origin LIMIT 0");
+        if (originProbe.IsSuccess) return;
+        var migration = _connection.Query("ALTER TABLE Drawer ADD origin STRING DEFAULT 'legacy'");
+        if (!migration.IsSuccess)
+            throw new InvalidOperationException($"BogDB schema migration failed: {migration.ErrorMessage}");
     }
 
     private void Upsert(MemoryDrawer drawer)
@@ -263,6 +305,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
         ["added_by"] = drawer.AddedBy,
         ["filed_at"] = drawer.FiledAt,
         ["id_recipe"] = drawer.IdRecipe,
+        ["origin"] = drawer.Origin,
         ["embedding"] = drawer.Embedding.ToArray(),
     };
 
@@ -273,7 +316,8 @@ public sealed class BogDbMemoryStore : IMemoryStore
         string.Equals(current.Content, expected.Content, StringComparison.Ordinal) &&
         string.Equals(current.SourceFile, expected.SourceFile, StringComparison.Ordinal) &&
         string.Equals(current.AddedBy, expected.AddedBy, StringComparison.Ordinal) &&
-        string.Equals(current.IdRecipe, expected.IdRecipe, StringComparison.Ordinal);
+        string.Equals(current.IdRecipe, expected.IdRecipe, StringComparison.Ordinal) &&
+        string.Equals(current.Origin, expected.Origin, StringComparison.Ordinal);
 
     private MemoryDrawer? GetCore(string id)
     {
@@ -299,11 +343,12 @@ public sealed class BogDbMemoryStore : IMemoryStore
             row.GetString(5) ?? "",
             row.GetString(6) ?? "",
             row.GetString(7) ?? "",
-            ToFloatList(row.GetValue(8)))).ToList();
+            row.GetString(8) ?? "legacy",
+            ToFloatList(row.GetValue(9)))).ToList();
     }
 
     private const string Projection = "MATCH (d:Drawer)";
-    private const string ReturnFields = "d.id, d.wing, d.room, d.content, d.source_file, d.added_by, d.filed_at, d.id_recipe, d.embedding";
+    private const string ReturnFields = "d.id, d.wing, d.room, d.content, d.source_file, d.added_by, d.filed_at, d.id_recipe, d.origin, d.embedding";
 
     private static IReadOnlyList<float> ToFloatList(object? value)
     {

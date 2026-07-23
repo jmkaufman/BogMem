@@ -92,7 +92,7 @@ public static class McpServerTests
             var toolsResponse = server.HandleRequest(JsonNode.Parse(
                 """{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}""")!)!;
             var productTools = toolsResponse["result"]!["tools"]!.AsArray();
-            TestSupport.AssertTrue(productTools.Count == 13, "functional MCP should advertise only implemented product tools");
+            TestSupport.AssertTrue(productTools.Count == 14, "functional MCP should advertise only implemented product tools");
             TestSupport.AssertTrue(productTools.All(t => !t!["name"]!.GetValue<string>().StartsWith("mempalace_kg_", StringComparison.Ordinal)),
                 "functional MCP must not advertise parity-only KG stubs");
             var add = ToolResult(server, "mempalace_add_drawer",
@@ -107,12 +107,26 @@ public static class McpServerTests
             var project = Directory.CreateTempSubdirectory("bogmem-mcp-mine-").FullName;
             try
             {
-                File.WriteAllText(Path.Combine(project, "notes.md"),
+                var notes = Path.Combine(project, "notes.md");
+                File.WriteAllText(notes,
                     string.Join("\n\n", Enumerable.Repeat("MCP project mining stores verbatim durable notes.", 40)));
                 var mine = ToolResult(server, "mempalace_mine",
                     new JsonObject { ["source"] = project, ["wing"] = "mcp_project" });
                 TestSupport.AssertTrue(mine["success"]!.GetValue<bool>() && mine["drawers_written"]!.GetValue<int>() > 0,
                     "functional MCP mine should write project drawers");
+                File.Delete(notes);
+                var preview = ToolResult(server, "mempalace_sync",
+                    new JsonObject { ["project_dir"] = project, ["wing"] = "mcp_project" });
+                TestSupport.AssertTrue(preview["success"]!.GetValue<bool>() && preview["dry_run"]!.GetValue<bool>() &&
+                                       preview["missing"]!.GetValue<int>() > 0 && preview["removed_drawers"]!.GetValue<int>() == 0,
+                    "functional MCP sync should preview by default");
+                var unsafeApply = ToolResult(server, "mempalace_sync",
+                    new JsonObject { ["wing"] = "mcp_project", ["apply"] = true });
+                TestSupport.AssertTrue(!unsafeApply["success"]!.GetValue<bool>(), "functional MCP sync must reject unscoped apply");
+                var apply = ToolResult(server, "mempalace_sync",
+                    new JsonObject { ["project_dir"] = project, ["wing"] = "mcp_project", ["apply"] = true });
+                TestSupport.AssertTrue(apply["success"]!.GetValue<bool>() && apply["removed_drawers"]!.GetValue<int>() > 0,
+                    "functional MCP sync apply should remove missing project drawers");
             }
             finally
             {

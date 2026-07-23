@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using Bogmem.Slices.Chunkers;
+using Bogmem.Slices.Locking;
 using Bogmem.Slices.Storage;
 
 namespace Bogmem.Slices.Mining;
@@ -91,6 +92,7 @@ public sealed class ProjectMiner(IMemoryStore store)
         var planned = 0;
         var written = 0;
 
+        using var palaceLock = FileLock.Acquire(store.Status().DatabasePath);
         foreach (var file in selected)
         {
             string content;

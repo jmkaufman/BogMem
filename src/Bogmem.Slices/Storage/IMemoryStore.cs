@@ -11,6 +11,7 @@ public sealed record MemoryDrawer(
     string AddedBy,
     string FiledAt,
     string IdRecipe,
+    string Origin,
     [property: JsonIgnore] IReadOnlyList<float> Embedding);
 
 public sealed record AddDrawerResult(MemoryDrawer Drawer, bool Created);
@@ -59,6 +60,7 @@ public interface IMemoryStore : IDisposable
         double maxDistance = 0);
     MemoryDrawer? Update(string id, string? content = null, string? wing = null, string? room = null);
     bool Delete(string id);
+    int DeleteMany(IReadOnlyCollection<string> ids);
     int DeleteBySource(string sourceFile, bool dryRun = true);
     MemoryStoreStatus Status();
 }

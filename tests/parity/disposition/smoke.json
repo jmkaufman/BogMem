@@ -50,6 +50,14 @@
       "slice": "P2"
     },
     {
+      "test_id": "project_sync",
+      "module": "ProjectSync",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "safe dry-run/apply project pruning",
+      "slice": "P3"
+    },
+    {
       "test_id": "ids",
       "module": "IdRecipes",
       "status": "pass",

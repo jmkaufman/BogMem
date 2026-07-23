@@ -100,6 +100,29 @@ public static class CliExitCodeTests
                 if (mineJson.RootElement.GetProperty("drawersWritten").GetInt32() == 0)
                     failures.Add("product mine should write project drawers");
 
+            File.Delete(Path.Combine(mineSource, "notes.md"));
+            var syncPreview = InvokeCapture([
+                "sync", mineSource, "--palace", productPalace, "--wing", "cli_project"
+            ], TestKit.Root);
+            Expect(failures, "product sync preview -> 0", 0, syncPreview.Code);
+            using (var syncJson = JsonDocument.Parse(syncPreview.Stdout))
+            {
+                if (!syncJson.RootElement.GetProperty("dryRun").GetBoolean() ||
+                    syncJson.RootElement.GetProperty("missing").GetInt32() == 0 ||
+                    syncJson.RootElement.GetProperty("removedDrawers").GetInt32() != 0)
+                    failures.Add("product sync preview should report missing drawers without deleting");
+            }
+
+            Expect(failures, "product sync unscoped apply -> 2", 2,
+                Invoke(["sync", "--palace", productPalace, "--wing", "cli_project", "--apply"], TestKit.Root));
+            var syncApply = InvokeCapture([
+                "sync", mineSource, "--palace", productPalace, "--wing", "cli_project", "--apply"
+            ], TestKit.Root);
+            Expect(failures, "product sync apply -> 0", 0, syncApply.Code);
+            using (var syncJson = JsonDocument.Parse(syncApply.Stdout))
+                if (syncJson.RootElement.GetProperty("removedDrawers").GetInt32() == 0)
+                    failures.Add("product sync apply should remove missing project drawers");
+
             // The canonical full-corpus gate is one aggregate invocation. It must
             // run every leaf module and produce an aggregate report, rather than
             // being rejected as an unknown module before dispatch.
