@@ -98,9 +98,10 @@ flow is:
 4. Call `mempalace_sync` without `apply` to inspect stale sources.
 5. Apply sync only with the intended `project_dir`.
 
-The current retrieval mode is BogDB-maintained HNSW + BM25 hybrid lexical
-retrieval, not semantic search. Check `mempalace_status.retrieval_mode` instead
-of assuming a backend. `mempalace_mine` uses the same project configuration and
+The current retrieval mode combines local MiniLM semantic vectors in BogDB's
+maintained HNSW index with native BM25. Check both
+`mempalace_status.retrieval_mode` and `embedding_model` instead of assuming a
+backend or model. `mempalace_mine` uses the same project configuration and
 returns its `files_by_room` distribution.
 
 ## 3. Embedded .NET API
@@ -133,3 +134,7 @@ var hits = store.Search("authentication decision", wing: "my_project");
 Keep one long-lived store per process. Dispose it during shutdown. Coordinate
 different processes through the CLI/MCP workflow so the palace write lock can
 prevent mine/sync overlap.
+
+The default constructor resolves local MiniLM and downloads its model on first
+embedding. Tests or constrained offline deployments can inject an
+`IMemoryEmbedder` directly or set `BOGMEM_EMBEDDING_MODEL=lexical`.

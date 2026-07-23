@@ -22,6 +22,10 @@ using Bogmem.Slices.Tests.Storage;
 using Bogmem.Slices.Tests.Sync;
 using Bogmem.Slices.Tests.Wal;
 
+// The product default exercises local MiniLM. The deterministic compatibility
+// suite opts into the dependency-free lexical fallback and never downloads a model.
+Environment.SetEnvironmentVariable("BOGMEM_EMBEDDING_MODEL", "lexical");
+
 var failures = new List<Exception>();
 
 // Smoke suites from the initial lane plus deterministic modules that write

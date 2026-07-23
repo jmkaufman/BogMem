@@ -6,6 +6,10 @@ verbatim drawers persisted in BogDB, searchable from the CLI or over MCP.
 
 ## Quick start
 
+BogMem runs `all-MiniLM-L6-v2` locally by default. The first command that needs
+an embedding downloads roughly 90 MB into the local model cache; later runs are
+offline. Set `BOGMEM_MODEL_CACHE` to choose the cache directory.
+
 ```bash
 # From a source checkout. Uses ~/.bogmem/palace unless --palace is supplied.
 dotnet run --project src/Bogmem.Cli -- init
@@ -103,10 +107,15 @@ is tested and documented; see
 The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.3 maintains a
 cosine HNSW index and a full-text BM25 index across commits, deletes, and
 reopen. BogMem combines their scores with the MemPalace-compatible 0.6/0.4
-weighting. The vectors are still deterministic hashed word/trigram features,
-so this is fast local lexical retrieval—not yet the original ONNX semantic
-embedder. `IMemoryStore` keeps that eventual embedding replacement behind the
-same application boundary.
+weighting. Vector candidates come from the same 384-dimensional
+`all-MiniLM-L6-v2` sentence-transformer family used by the pinned MemPalace
+corpus, running locally through ONNX.
+
+Every drawer records the exact embedding producer. Opening a palace with a
+different configured model re-embeds its drawers before querying, so BogMem
+never compares vectors from incompatible spaces. For deliberately
+dependency-free lexical retrieval, set `BOGMEM_EMBEDDING_MODEL=lexical`; set it
+back to `minilm` to migrate the palace to semantic vectors.
 
 No Chroma process or Chroma package is used by the product path.
 

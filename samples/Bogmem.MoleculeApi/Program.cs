@@ -90,6 +90,15 @@ static void RunDemo()
         Console.WriteLine("Free-text retrieval: chromatin enzyme involved in recovery from DNA damage");
         foreach (var hit in service.Search("chromatin enzyme recovery from DNA damage", limit: 2))
             Console.WriteLine($"  {hit.Molecule.Symbol,-6} score={hit.Score:F3}  source={hit.Molecule.SourceUrl}");
+
+        Console.WriteLine();
+        Console.WriteLine("Semantic retrieval: protein that mends broken genetic material by exchanging strands");
+        var semanticHits = service.Search(
+            "protein that mends broken genetic material by exchanging strands",
+            limit: 2);
+        foreach (var hit in semanticHits)
+            Console.WriteLine($"  {hit.Molecule.Symbol,-6} score={hit.Score:F3}  {hit.Molecule.Summary}");
+        EnsureSymbols(semanticHits, "BRCA1", "RAD51");
     }
     finally
     {

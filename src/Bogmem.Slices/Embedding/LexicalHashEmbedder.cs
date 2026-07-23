@@ -6,15 +6,17 @@ using Bogmem.Slices.Search;
 namespace Bogmem.Slices.Embedding;
 
 /// <summary>
-/// Dependency-free, deterministic retrieval baseline. It hashes word and
-/// character-trigram features into a normalized vector. This is deliberately
-/// advertised as lexical—not semantic—and exists so the product can perform
-/// honest local retrieval while the ONNX embedder is integrated.
+/// Dependency-free, deterministic fallback. It hashes word and
+/// character-trigram features into a normalized vector and is deliberately
+/// advertised as lexical—not semantic.
 /// </summary>
-public sealed class LexicalHashEmbedder
+public sealed class LexicalHashEmbedder : IMemoryEmbedder
 {
     public const int Dimensions = 384;
     public const string Identity = "bogmem-lexical-hash-v1";
+
+    string IMemoryEmbedder.Identity => Identity;
+    int IMemoryEmbedder.Dimensions => Dimensions;
 
     public float[] Embed(string text)
     {
@@ -48,5 +50,9 @@ public sealed class LexicalHashEmbedder
         var norm = Math.Sqrt(squaredNorm);
         for (var i = 0; i < vector.Length; i++) vector[i] = (float)(vector[i] / norm);
         return vector;
+    }
+
+    public void Dispose()
+    {
     }
 }

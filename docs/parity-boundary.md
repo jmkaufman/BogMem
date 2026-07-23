@@ -36,6 +36,18 @@ Project room routing is another:
   behavior and has a regression test for a filename keyword such as
   `service-api.cs`.
 
+Semantic embedding is also a product integration rather than an exact-vector
+parity claim:
+
+- The frozen model inventory records Chroma's pinned MiniLM ONNX export
+  (`sha256:4f148b...`), whose bytes are intentionally not vendored.
+- The product uses the maintained `ElBruno.LocalEmbeddings` MiniLM export
+  (`sha256:6fd5d7...`) and pins that hash before inference.
+- Both produce normalized 384-dimensional `all-MiniLM-L6-v2` sentence
+  embeddings, but BogMem records the product model identity on every drawer
+  and re-embeds on a mismatch instead of claiming byte-identical legacy
+  vectors.
+
 When a legacy bug is found, add a regression test at the product boundary. Keep
 the oracle unchanged unless the project intentionally chooses a new upstream
 pin and regenerates the corpus.

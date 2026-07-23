@@ -147,7 +147,7 @@ public sealed class McpServer
                 {
                     ["name"] = t.Name,
                     ["description"] = _memoryStore is not null && t.Name == "mempalace_search"
-                        ? "Local hybrid lexical search over persistent BogDB drawers using maintained HNSW and BM25 indexes. Returns verbatim content with distance and ranking scores."
+                        ? "Local hybrid semantic and full-text search over persistent BogDB drawers using maintained HNSW and BM25 indexes. Returns verbatim content with distance and ranking scores."
                         : _memoryStore is not null && t.Name == "mempalace_mine"
                             ? "Mine ordinary project text and code into persistent BogDB drawers. Respects Git excludes, chunks verbatim, and atomically replaces each changed source. Only mode='projects' is implemented."
                             : _memoryStore is not null && t.Name == "mempalace_sync"

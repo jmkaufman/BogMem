@@ -20,6 +20,7 @@ The demo uses a temporary palace and verifies these results:
 
 - `DNA repair` AND `homologous recombination` → BRCA1 and RAD51
 - `DNA damage response` AND `cell cycle checkpoint signaling` → ATM
+- “mends broken genetic material by exchanging strands” → BRCA1 and RAD51
 
 ## Run the API
 
@@ -50,6 +51,10 @@ is serialized into one drawer and replaced through a stable
 retrieval through BogDB's commit-maintained HNSW and BM25 indexes. The
 application owns record validation, controlled vocabulary, and the exact
 all-functions predicate.
+
+The free-text endpoint uses local MiniLM semantic embeddings. This is why a
+query can retrieve `canine` for `dog` without a shared lexical token; the
+capability endpoint still treats that similarity only as candidate generation.
 
 The four seed records are compact educational summaries linked to their NCBI
 Gene entries:

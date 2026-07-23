@@ -1,4 +1,5 @@
 using BogDb.Core.Main;
+using Bogmem.Slices.Embedding;
 using Bogmem.Slices.Storage;
 
 namespace Bogmem.Slices.Tests.Storage;
@@ -57,6 +58,7 @@ public static class BogDbMemoryStoreTests
         }
 
         VerifyOriginMigration();
+        VerifyEmbeddingModelMigration();
     }
 
     private static void VerifyOriginMigration()
@@ -101,6 +103,60 @@ public static class BogDbMemoryStoreTests
         finally
         {
             if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private static void VerifyEmbeddingModelMigration()
+    {
+        var path = Directory.CreateTempSubdirectory("bogmem-bogdb-embedding-migration-").FullName;
+        try
+        {
+            string drawerId;
+            using (var lexical = new BogDbMemoryStore(path, new LexicalHashEmbedder()))
+                drawerId = lexical.Add("models", "migration", "A canine receives veterinary care.").Drawer.Id;
+
+            var semantic = new TestEmbedder("test-semantic-v1");
+            using (var migrated = new BogDbMemoryStore(path, semantic))
+            {
+                TestSupport.AssertTrue(semantic.EmbeddedTexts == 1,
+                    "changing embedding identity should re-embed existing drawers once");
+                TestSupport.AssertTrue(migrated.Status().EmbeddingModel == semantic.Identity,
+                    "status should report the vector producer identity");
+                TestSupport.AssertTrue(migrated.Get(drawerId)?.Embedding[1] == 1.0f,
+                    "model migration should persist replacement vectors");
+            }
+
+            var sameModel = new TestEmbedder("test-semantic-v1");
+            using var reopened = new BogDbMemoryStore(path, sameModel);
+            TestSupport.AssertTrue(sameModel.EmbeddedTexts == 0,
+                "reopening with the recorded embedding identity should not re-embed");
+            var preview = reopened.ReplaceSource(
+                "models", "migration", "/tmp/preview.md", ["A preview-only chunk."], dryRun: true);
+            TestSupport.AssertTrue(preview.Changed && !preview.Applied && sameModel.EmbeddedTexts == 0,
+                "dry-run source replacement should not invoke the embedder");
+        }
+        finally
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private sealed class TestEmbedder(string identity) : IMemoryEmbedder
+    {
+        public string Identity { get; } = identity;
+        public int Dimensions => LexicalHashEmbedder.Dimensions;
+        public int EmbeddedTexts { get; private set; }
+
+        public float[] Embed(string text)
+        {
+            EmbeddedTexts++;
+            var vector = new float[Dimensions];
+            vector[1] = 1.0f;
+            return vector;
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

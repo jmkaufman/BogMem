@@ -29,15 +29,16 @@ public sealed class BogDbMemoryStore : IMemoryStore
     private readonly BogDatabase _database;
     private readonly BogConnection _connection;
     private readonly FtsExtension _ftsExtension;
-    private readonly LexicalHashEmbedder _embedder = new();
+    private readonly IMemoryEmbedder _embedder;
     private bool _disposed;
 
     public string DatabasePath { get; }
 
-    public BogDbMemoryStore(string databasePath)
+    public BogDbMemoryStore(string databasePath, IMemoryEmbedder? embedder = null)
     {
         if (string.IsNullOrWhiteSpace(databasePath)) throw new ArgumentException("A BogDB palace path is required.", nameof(databasePath));
         DatabasePath = Path.GetFullPath(databasePath);
+        _embedder = embedder ?? MemoryEmbedderFactory.CreateDefault();
         _database = BogDatabase.Open(DatabasePath);
         new VectorExtension().Load(_database);
         _ftsExtension = new FtsExtension();
@@ -85,10 +86,11 @@ public sealed class BogDbMemoryStore : IMemoryStore
         addedBy = string.IsNullOrWhiteSpace(addedBy) ? "mempalace" : addedBy.Trim();
 
         var filedAt = DateTimeOffset.UtcNow.ToString("O");
-        var expected = chunks.Select((content, chunkIndex) =>
-        {
-            content = Required(content, $"{nameof(chunks)}[{chunkIndex}]", trim: false);
-            return new MemoryDrawer(
+        var normalizedChunks = chunks
+            .Select((content, chunkIndex) => Required(content, $"{nameof(chunks)}[{chunkIndex}]", trim: false))
+            .ToArray();
+        var expectedMetadata = normalizedChunks.Select((content, chunkIndex) =>
+            new MemoryDrawer(
                 IdRecipes.MakeDrawerIdFromChunk(wing, room, sourceFile, chunkIndex),
                 wing,
                 room,
@@ -98,8 +100,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
                 filedAt,
                 IdRecipes.IdRecipe,
                 "project",
-                _embedder.Embed(content));
-        }).ToArray();
+                [])).ToArray();
 
         lock (_gate)
         {
@@ -108,11 +109,19 @@ public sealed class BogDbMemoryStore : IMemoryStore
                 .Where(d => string.Equals(d.SourceFile, sourceFile, StringComparison.Ordinal))
                 .OrderBy(d => d.Id, StringComparer.Ordinal)
                 .ToArray();
-            var expectedById = expected.OrderBy(d => d.Id, StringComparer.Ordinal).ToArray();
+            var expectedById = expectedMetadata.OrderBy(d => d.Id, StringComparer.Ordinal).ToArray();
             var changed = current.Length != expectedById.Length ||
                           current.Where((drawer, index) => !EquivalentSourceDrawer(drawer, expectedById[index])).Any();
             if (!changed || dryRun)
-                return new(sourceFile, current.Length, expected.Length, changed, Applied: false);
+                return new(sourceFile, current.Length, expectedMetadata.Length, changed, Applied: false);
+
+            var embeddings = _embedder.EmbedMany(normalizedChunks);
+            if (embeddings.Count != normalizedChunks.Length)
+                throw new InvalidOperationException(
+                    $"The embedder returned {embeddings.Count} vectors for {normalizedChunks.Length} chunks.");
+            var expected = expectedMetadata
+                .Select((drawer, chunkIndex) => drawer with { Embedding = embeddings[chunkIndex] })
+                .ToArray();
 
             _connection.ExecuteWriteTransaction(() =>
             {
@@ -307,7 +316,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
                 "bogdb", DatabasePath, drawers.Count,
                 drawers.Select(d => d.Wing).Distinct(StringComparer.Ordinal).Count(),
                 drawers.Select(d => (d.Wing, d.Room)).Distinct().Count(),
-                "bogdb-hnsw-bm25-hybrid", LexicalHashEmbedder.Identity);
+                "bogdb-hnsw-bm25-hybrid", _embedder.Identity);
         }
     }
 
@@ -318,6 +327,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
             if (_disposed) return;
             _connection.Dispose();
             _database.Dispose();
+            _embedder.Dispose();
             _disposed = true;
         }
     }
@@ -330,13 +340,19 @@ public sealed class BogDbMemoryStore : IMemoryStore
                 "CREATE NODE TABLE Drawer(" +
                 "id STRING PRIMARY KEY, wing STRING, room STRING, content STRING, " +
                 "source_file STRING, added_by STRING, filed_at STRING, id_recipe STRING, " +
-                "origin STRING, embedding FLOAT[])");
+                "origin STRING, embedding FLOAT[], embedding_model STRING)");
         }
         else
         {
             var originProbe = _connection.Query("MATCH (d:Drawer) RETURN d.origin LIMIT 0");
             if (!originProbe.IsSuccess)
                 QueryOrThrow("ALTER TABLE Drawer ADD origin STRING DEFAULT 'legacy'", context: "schema migration");
+
+            var embeddingModelProbe = _connection.Query("MATCH (d:Drawer) RETURN d.embedding_model LIMIT 0");
+            if (!embeddingModelProbe.IsSuccess)
+                QueryOrThrow(
+                    $"ALTER TABLE Drawer ADD embedding_model STRING DEFAULT '{LexicalHashEmbedder.Identity}'",
+                    context: "embedding identity migration");
         }
 
         if (!_connection.HasTable(SearchTable))
@@ -386,12 +402,27 @@ public sealed class BogDbMemoryStore : IMemoryStore
                 $"Drawer FTS key collision between: {string.Join(", ", collisions.Select(drawer => drawer.Id))}");
 
         var existing = ReadSearchProjection();
+        var identities = ReadEmbeddingIdentities();
         var wantedIds = drawers.Select(drawer => drawer.Id).ToHashSet(StringComparer.Ordinal);
-        var normalized = drawers
-            .Select(drawer => drawer.Embedding.Count == LexicalHashEmbedder.Dimensions
-                ? drawer
-                : drawer with { Embedding = _embedder.Embed(drawer.Content) })
+        var normalized = drawers.ToArray();
+        var reembedIndexes = drawers
+            .Select((drawer, index) => new { Drawer = drawer, Index = index })
+            .Where(item =>
+                item.Drawer.Embedding.Count != _embedder.Dimensions ||
+                !identities.TryGetValue(item.Drawer.Id, out var identity) ||
+                !string.Equals(identity, _embedder.Identity, StringComparison.Ordinal))
+            .Select(item => item.Index)
             .ToArray();
+        var migratedEmbeddings = _embedder.EmbedMany(
+            reembedIndexes.Select(index => drawers[index].Content).ToArray());
+        if (migratedEmbeddings.Count != reembedIndexes.Length)
+            throw new InvalidOperationException(
+                $"The embedder returned {migratedEmbeddings.Count} vectors for {reembedIndexes.Length} drawers.");
+        for (var index = 0; index < reembedIndexes.Length; index++)
+        {
+            var drawerIndex = reembedIndexes[index];
+            normalized[drawerIndex] = normalized[drawerIndex] with { Embedding = migratedEmbeddings[index] };
+        }
 
         var needsWrite = existing.Keys.Any(id => !wantedIds.Contains(id));
         for (var index = 0; index < normalized.Length && !needsWrite; index++)
@@ -399,6 +430,8 @@ public sealed class BogDbMemoryStore : IMemoryStore
             var drawer = normalized[index];
             needsWrite =
                 drawer.Embedding.Count != drawers[index].Embedding.Count ||
+                !identities.TryGetValue(drawer.Id, out var identity) ||
+                !string.Equals(identity, _embedder.Identity, StringComparison.Ordinal) ||
                 !existing.TryGetValue(drawer.Id, out var document) ||
                 !string.Equals(document.Content, drawer.Content, StringComparison.Ordinal) ||
                 document.SearchId != SearchId(drawer.Id);
@@ -412,7 +445,9 @@ public sealed class BogDbMemoryStore : IMemoryStore
             for (var index = 0; index < normalized.Length; index++)
             {
                 var drawer = normalized[index];
-                if (drawers[index].Embedding.Count != LexicalHashEmbedder.Dimensions)
+                if (drawers[index].Embedding.Count != _embedder.Dimensions ||
+                    !identities.TryGetValue(drawer.Id, out var identity) ||
+                    !string.Equals(identity, _embedder.Identity, StringComparison.Ordinal))
                     _connection.UpsertNodeById(Table, drawer.Id, ToProperties(drawer));
                 UpsertSearchProjection(drawer);
             }
@@ -488,6 +523,20 @@ public sealed class BogDbMemoryStore : IMemoryStore
         return documents;
     }
 
+    private Dictionary<string, string> ReadEmbeddingIdentities()
+    {
+        var result = QueryOrThrow("MATCH (d:Drawer) RETURN d.id, d.embedding_model");
+        var identities = new Dictionary<string, string>(StringComparer.Ordinal);
+        while (result.HasNext())
+        {
+            var row = result.GetNext();
+            var drawerId = row.GetString(0);
+            if (!string.IsNullOrEmpty(drawerId))
+                identities[drawerId] = row.GetString(1) ?? "";
+        }
+        return identities;
+    }
+
     private static long SearchId(string drawerId)
     {
         var digest = SHA256.HashData(Encoding.UTF8.GetBytes(drawerId));
@@ -495,7 +544,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
         return value == 0 ? 1 : (long)value;
     }
 
-    private static Dictionary<string, object> ToProperties(MemoryDrawer drawer) => new()
+    private Dictionary<string, object> ToProperties(MemoryDrawer drawer) => new()
     {
         ["id"] = drawer.Id,
         ["wing"] = drawer.Wing,
@@ -507,6 +556,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
         ["id_recipe"] = drawer.IdRecipe,
         ["origin"] = drawer.Origin,
         ["embedding"] = drawer.Embedding.ToArray(),
+        ["embedding_model"] = _embedder.Identity,
     };
 
     private static bool EquivalentSourceDrawer(MemoryDrawer current, MemoryDrawer expected) =>
