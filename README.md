@@ -117,6 +117,11 @@ never compares vectors from incompatible spaces. For deliberately
 dependency-free lexical retrieval, set `BOGMEM_EMBEDDING_MODEL=lexical`; set it
 back to `minilm` to migrate the palace to semantic vectors.
 
+Ordinary searches hydrate only a bounded union of HNSW and FTS candidates,
+rather than loading the palace into application memory. Scoped wing/room/source
+searches retain a correctness-first metadata scan until BogDB's secondary-index
+replacement lifecycle is hardened.
+
 No Chroma process or Chroma package is used by the product path.
 
 ## Compatibility suite

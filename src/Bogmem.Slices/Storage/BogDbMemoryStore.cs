@@ -174,22 +174,27 @@ public sealed class BogDbMemoryStore : IMemoryStore
         lock (_gate)
         {
             ThrowIfDisposed();
-            var all = ReadAll();
-            var candidates = all
-                .Where(d => wing is null || string.Equals(d.Wing, wing, StringComparison.Ordinal))
-                .Where(d => room is null || string.Equals(d.Room, room, StringComparison.Ordinal))
-                .Where(d => sourceFile is null || string.Equals(d.SourceFile, sourceFile.Trim(), StringComparison.Ordinal))
-                .ToArray();
-            if (candidates.Length == 0) return [];
-
             var queryVector = _embedder.Embed(query);
-            var byId = candidates.ToDictionary(d => d.Id, StringComparer.Ordinal);
             var isScoped = wing is not null || room is not null || sourceFile is not null;
             var candidateLimit = isScoped
-                ? all.Count
-                : Math.Min(all.Count, Math.Max(limit * UnscopedOverfetch, 64));
+                ? CountDrawers()
+                : Math.Max(limit * UnscopedOverfetch, 64);
+            if (candidateLimit == 0) return [];
+
             var distances = QueryVectorIndex(queryVector, candidateLimit);
             var bm25Scores = QueryFtsIndex(query, candidateLimit);
+            var candidates = isScoped
+                ? ReadScoped(wing, room, sourceFile)
+                : distances.Keys
+                    .Concat(bm25Scores.Keys)
+                    .Distinct(StringComparer.Ordinal)
+                    .Select(GetCore)
+                    .Where(drawer => drawer is not null)
+                    .Select(drawer => drawer!)
+                    .ToArray();
+            if (candidates.Length == 0) return [];
+
+            var byId = candidates.ToDictionary(d => d.Id, StringComparer.Ordinal);
             var maxBm25 = bm25Scores
                 .Where(pair => byId.ContainsKey(pair.Key))
                 .Select(pair => pair.Value)
@@ -489,8 +494,6 @@ public sealed class BogDbMemoryStore : IMemoryStore
 
     private Dictionary<string, double> QueryFtsIndex(string query, int limit)
     {
-        var searchIds = ReadSearchProjection()
-            .ToDictionary(pair => pair.Value.SearchId, pair => pair.Key);
         var result = QueryOrThrow(
             $"CALL QUERY_FTS_INDEX('{FtsIndex}', $query, $limit) RETURN *",
             new Dictionary<string, object?>
@@ -503,10 +506,19 @@ public sealed class BogDbMemoryStore : IMemoryStore
         while (result.HasNext())
         {
             var row = result.GetNext();
-            if (searchIds.TryGetValue(row.GetInt64(0), out var drawerId))
+            var drawerId = GetDrawerIdForSearchId(row.GetInt64(0));
+            if (!string.IsNullOrEmpty(drawerId))
                 scores[drawerId] = row.GetDouble(1);
         }
         return scores;
+    }
+
+    private string? GetDrawerIdForSearchId(long searchId)
+    {
+        var result = QueryOrThrow(
+            "MATCH (s:DrawerSearch) WHERE s.id = $searchId RETURN s.drawer_id",
+            new Dictionary<string, object?> { ["searchId"] = searchId });
+        return result.HasNext() ? result.GetNext().GetString(0) : null;
     }
 
     private Dictionary<string, SearchProjection> ReadSearchProjection()
@@ -578,6 +590,42 @@ public sealed class BogDbMemoryStore : IMemoryStore
     }
 
     private List<MemoryDrawer> ReadAll() => Execute(Projection + " RETURN " + ReturnFields);
+
+    private MemoryDrawer[] ReadScoped(string? wing, string? room, string? sourceFile)
+    {
+        // BogDB 1.3 secondary metadata indexes can retain duplicate/stale hits
+        // across delete-then-upsert source replacement. Keep this scoped path
+        // on the correct scan until that lifecycle is hardened upstream.
+        var predicates = new List<string>();
+        var parameters = new Dictionary<string, object?>();
+        if (wing is not null)
+        {
+            predicates.Add("d.wing = $wing");
+            parameters["wing"] = wing;
+        }
+        if (room is not null)
+        {
+            predicates.Add("d.room = $room");
+            parameters["room"] = room;
+        }
+        if (sourceFile is not null)
+        {
+            predicates.Add("d.source_file = $sourceFile");
+            parameters["sourceFile"] = sourceFile.Trim();
+        }
+
+        var where = predicates.Count == 0 ? "" : " WHERE " + string.Join(" AND ", predicates);
+        return Execute(Projection + where + " RETURN " + ReturnFields, parameters)
+            .DistinctBy(drawer => drawer.Id, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private int CountDrawers()
+    {
+        var result = QueryOrThrow("MATCH (d:Drawer) RETURN count(*)");
+        if (!result.HasNext()) return 0;
+        return (int)Math.Min(result.GetNext().GetInt64(0), int.MaxValue);
+    }
 
     private List<MemoryDrawer> Execute(string query, IReadOnlyDictionary<string, object?>? parameters = null)
     {

@@ -59,6 +59,7 @@ public static class BogDbMemoryStoreTests
 
         VerifyOriginMigration();
         VerifyEmbeddingModelMigration();
+        VerifyCandidateSearchBeyondOverfetchWindow();
     }
 
     private static void VerifyOriginMigration()
@@ -134,6 +135,42 @@ public static class BogDbMemoryStoreTests
                 "models", "migration", "/tmp/preview.md", ["A preview-only chunk."], dryRun: true);
             TestSupport.AssertTrue(preview.Changed && !preview.Applied && sameModel.EmbeddedTexts == 0,
                 "dry-run source replacement should not invoke the embedder");
+        }
+        finally
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private static void VerifyCandidateSearchBeyondOverfetchWindow()
+    {
+        var path = Directory.CreateTempSubdirectory("bogmem-bogdb-candidate-search-").FullName;
+        try
+        {
+            using var store = new BogDbMemoryStore(path, new LexicalHashEmbedder());
+            var east = Enumerable.Range(0, 70)
+                .Select(index => index == 66
+                    ? "The heliotrope protocol rotates service credentials without downtime."
+                    : $"Eastern architecture note number {index} covers ordinary deployment operations.")
+                .ToArray();
+            var west = Enumerable.Range(0, 2)
+                .Select(index => index == 1
+                    ? "The heliotrope garden uses drought-tolerant flowers and drip irrigation."
+                    : $"Western biology note number {index} covers ordinary laboratory operations.")
+                .ToArray();
+            store.ReplaceSource("east", "operations", "/notes/east.md", east);
+            store.ReplaceSource("west", "operations", "/notes/west.md", west);
+
+            var unscoped = store.Search("heliotrope credential rotation", limit: 1);
+            TestSupport.AssertTrue(
+                unscoped.Single().Drawer.Wing == "east",
+                "native candidates should find a relevant drawer beyond the 64-result hydration window");
+
+            var scoped = store.Search("heliotrope irrigation", limit: 2, wing: "west");
+            TestSupport.AssertTrue(
+                scoped.Count > 0 && scoped.All(hit => hit.Drawer.Wing == "west") &&
+                scoped[0].Drawer.Content.Contains("drip irrigation", StringComparison.Ordinal),
+                "scoped search should remain complete and isolated beyond the overfetch window");
         }
         finally
         {
