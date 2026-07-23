@@ -128,6 +128,12 @@ No Chroma process or Chroma package is used by the product path.
 The solution also contains the reusable golden-corpus harness and compatibility
 slices from the ASE porting effort.
 
+Spellchecking is deterministic across Windows, macOS, and Linux. BogMem embeds
+the FreeBSD-maintained `web2` corpus, derived from *Webster's Second
+International Dictionary*, instead of consulting a host-specific
+`/usr/share/dict/words`. Corpus provenance and checksums are recorded in
+[`web2.NOTICE.md`](src/Bogmem.Slices/Spellcheck/data/web2.NOTICE.md).
+
 ## Clean checkout
 
 ```bash

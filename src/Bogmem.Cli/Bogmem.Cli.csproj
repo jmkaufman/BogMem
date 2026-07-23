@@ -21,5 +21,6 @@
     <None Include="../../README.md" Pack="true" PackagePath="/" Link="README.md" />
     <None Include="../../LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" Link="THIRD-PARTY-NOTICES.md" />
+    <None Include="../Bogmem.Slices/Spellcheck/data/web2.NOTICE.md" Pack="true" PackagePath="/" Link="web2.NOTICE.md" />
   </ItemGroup>
 </Project>

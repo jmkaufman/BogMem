@@ -18,6 +18,10 @@ public static class SpellerTests
     public static void Run(TestDispositionLedgerWriter ledger)
     {
         var result = new SuiteResult("spellcheck");
+        var embeddedWords = new Speller().ValidWords;
+        result.Check("embedded web2 corpus", embeddedWords.Count == 234_487,
+            $"embedded web2 normalized word count {embeddedWords.Count}, expected 234487");
+
         long agree = 0, total = 0;
         var perRow = new List<(string Id, long Agree, long Total)>();
 

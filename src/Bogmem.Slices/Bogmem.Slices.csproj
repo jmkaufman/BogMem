@@ -13,6 +13,7 @@
     </None>
     <EmbeddedResource Include="Mcp/tools.json" LogicalName="Bogmem.Slices.Mcp.tools.json" />
     <EmbeddedResource Include="Spellcheck/data/word_count.en.json.gz" LogicalName="Bogmem.Slices.Spellcheck.data.word_count.en.json.gz" />
+    <EmbeddedResource Include="Spellcheck/data/web2.txt.gz" LogicalName="Bogmem.Slices.Spellcheck.data.web2.txt.gz" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BogDB.Core" Version="1.3.1" />

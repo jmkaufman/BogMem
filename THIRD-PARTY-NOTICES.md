@@ -27,3 +27,20 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+BogMem embeds the `web2` American-English word corpus maintained and
+distributed by [The FreeBSD Project](https://www.freebsd.org/). The corpus is
+derived from *Webster's Second International Dictionary*; FreeBSD's source
+notice states that its 1934 copyright has lapsed.
+
+BogMem acknowledges Webster's Second International Dictionary as the original
+source and The FreeBSD Project for maintaining and distributing the word list.
+The corpus is pinned to FreeBSD source revision
+[`df38c129b0ce967f6b8cca8d863f23915b315def`](https://github.com/freebsd/freebsd-src/blob/df38c129b0ce967f6b8cca8d863f23915b315def/share/dict/web2).
+Its upstream SHA-256 is
+`4240ed1b31a0e2f0ae9a475012d310bfffbd348a75401b760d60f3f623190f4e`.
+Additional provenance and the embedded artifact checksum are recorded in
+[`web2.NOTICE.md`](src/Bogmem.Slices/Spellcheck/data/web2.NOTICE.md), which is
+also included in the NuGet tool package.
