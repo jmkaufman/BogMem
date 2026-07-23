@@ -62,8 +62,13 @@ jobs:
         shell: bash
         run: |
           package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Tool.*.nupkg' -print -quit)"
+          graph_package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Graph.*.nupkg' -print -quit)"
           if [[ -z "$package_path" ]]; then
             echo "BogMem.Tool package was not produced." >&2
+            exit 1
+          fi
+          if [[ -z "$graph_package_path" ]]; then
+            echo "BogMem.Graph package was not produced." >&2
             exit 1
           fi
 
@@ -86,10 +91,10 @@ jobs:
           BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" search \
             "package smoke" --wing release --palace "$palace_path"
 
-      - name: Upload NuGet package
+      - name: Upload NuGet packages
         uses: actions/upload-artifact@v7
         with:
-          name: bogmem-nuget-package
+          name: bogmem-nuget-packages
           path: artifacts/nuget/*.nupkg
           compression-level: 0
           retention-days: 14

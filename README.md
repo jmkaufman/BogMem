@@ -1,8 +1,9 @@
 # BogMem
 
 BogMem is a .NET 10, local-first memory store derived from MemPalace. It now
-contains both the frozen compatibility corpus and a first usable product path:
-verbatim drawers persisted in BogDB, searchable from the CLI or over MCP.
+contains both the frozen compatibility corpus and two usable product paths:
+hybrid-searchable drawers and weighted temporal graph memory, both persisted
+in BogDB.
 
 ## Quick start
 
@@ -90,11 +91,13 @@ older BogMem schema are protected.
 
 See [`samples/`](samples/README.md) for copyable CLI automation, a generic MCP
 host configuration, a runnable embedded .NET lifecycle, and a molecule
-capability retrieval API:
+capability retrieval API. The actor-graph sample shows the separate graph
+memory package:
 
 ```bash
 dotnet run --project samples/Bogmem.Quickstart
 dotnet run --project samples/Bogmem.MoleculeApi -- --demo
+dotnet run --project samples/Bogmem.ActorGraph
 ```
 
 The frozen parity layer is evidence about the port, not an endorsement of every
@@ -122,6 +125,44 @@ rather than loading the palace into application memory. BogDB secondary indexes
 also serve scoped wing/room/source searches and source-replacement deletes.
 
 No Chroma process or Chroma package is used by the product path.
+
+### Graph memory
+
+`BogMem.Graph` is a reusable library for actor/co-activity memory. An upstream
+workflow supplies explicit, stable `CoActivityObservation` values; BogMem does
+not guess entities or relationships from arbitrary files. The same observation
+contract supports an in-memory fixed window and durable BogDB evidence:
+
+```csharp
+using Bogmem.Graph;
+
+var start = DateTimeOffset.UtcNow;
+var window = new ActorGraphWindow(start, start.AddMinutes(15));
+window.Observe(new(
+    "transfer-burst:42",
+    start.AddMinutes(1),
+    ["account-a", "account-b", "account-c"],
+    Weight: 2,
+    Context: "shared-endpoint"));
+
+var graph = window.Snapshot(minimumEdgeWeight: 0.5);
+var communities = new LeidenCommunityDetector().Detect(graph);
+var neighbors = graph.Neighbors("account-a");
+```
+
+Each observation is replay-safe. A multi-actor event projects to weighted,
+undirected actor pairs, while `BogDbActorGraphStore` retains the event and its
+participation edges rather than persisting only a lossy aggregate. Window
+updates are thread-safe and fan-out is bounded by default because pair
+projection grows quadratically.
+
+Community detection is reported as `leiden-deterministic-v1`: modularity local
+moving, connected-community refinement, and multilevel aggregation with stable
+ordering. It fixes the disconnected-community failure mode of naive Louvain,
+but its deterministic assignments are not promised to match a stochastic
+Leiden implementation bit for bit. See
+[`docs/graph-memory.md`](docs/graph-memory.md) for the model and integration
+boundary.
 
 ## Compatibility suite
 

@@ -34,6 +34,14 @@
       "slice": "S5c"
     },
     {
+      "test_id": "actor_graph",
+      "module": "ActorGraph",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "weighted temporal windows \u002B BogDB evidence \u002B deterministic Leiden-style communities",
+      "slice": "P5"
+    },
+    {
       "test_id": "bogdb_memory_store",
       "module": "BogDbMemoryStore",
       "status": "pass",

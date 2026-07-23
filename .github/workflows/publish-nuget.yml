@@ -53,7 +53,7 @@ jobs:
           fi
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "Publishing BogMem.Tool $version" >> "$GITHUB_STEP_SUMMARY"
+          echo "Publishing BogMem.Tool and BogMem.Graph $version" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Restore and audit dependencies
         run: >
@@ -92,6 +92,11 @@ jobs:
         shell: bash
         run: |
           package_version="${{ steps.version.outputs.version }}"
+          graph_package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Graph.*.nupkg' -print -quit)"
+          if [[ -z "$graph_package_path" ]]; then
+            echo "BogMem.Graph package was not produced." >&2
+            exit 1
+          fi
           tool_path="$RUNNER_TEMP/bogmem-tool"
           palace_path="$RUNNER_TEMP/bogmem-palace"
 
@@ -108,10 +113,10 @@ jobs:
           BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" search \
             "package smoke" --wing release --palace "$palace_path"
 
-      - name: Upload NuGet package
+      - name: Upload NuGet packages
         uses: actions/upload-artifact@v7
         with:
-          name: bogmem-nuget-package-${{ steps.version.outputs.version }}
+          name: bogmem-nuget-packages-${{ steps.version.outputs.version }}
           path: artifacts/nuget/*.nupkg
           compression-level: 0
           retention-days: 30

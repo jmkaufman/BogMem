@@ -1,1 +1,2 @@
+src/Bogmem.Graph/Bogmem.Graph.csproj
 src/Bogmem.Cli/Bogmem.Cli.csproj

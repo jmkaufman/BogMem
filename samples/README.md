@@ -1,7 +1,8 @@
 # Integrating BogMem
 
-BogMem has three integration surfaces. Pick the smallest one that fits your
-application; all three use the same persistent BogDB palace.
+BogMem has four integration surfaces. Pick the smallest one that fits your
+application; the persistent surfaces use BogDB and the fixed-window graph can
+run entirely in memory.
 
 ## Real-world service example
 
@@ -138,3 +139,18 @@ prevent mine/sync overlap.
 The default constructor resolves local MiniLM and downloads its model on first
 embedding. Tests or constrained offline deployments can inject an
 `IMemoryEmbedder` directly or set `BOGMEM_EMBEDDING_MODEL=lexical`.
+
+## 4. Weighted actor-graph memory
+
+Run the fixed-window co-activity example:
+
+```bash
+dotnet run --project samples/Bogmem.ActorGraph
+```
+
+[`Bogmem.ActorGraph`](Bogmem.ActorGraph/README.md) demonstrates the intended
+seam for workflow and stream-processing systems. The caller emits normalized,
+replay-safe observations; `BogMem.Graph` aggregates weighted actor pairs,
+serves neighborhoods, and detects communities. Use `ActorGraphWindow` for an
+in-memory analysis window or `BogDbActorGraphStore` when observations must be
+replayed across windows.
