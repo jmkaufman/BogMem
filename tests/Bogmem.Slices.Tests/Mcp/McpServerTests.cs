@@ -92,7 +92,7 @@ public static class McpServerTests
             var toolsResponse = server.HandleRequest(JsonNode.Parse(
                 """{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}""")!)!;
             var productTools = toolsResponse["result"]!["tools"]!.AsArray();
-            TestSupport.AssertTrue(productTools.Count == 12, "functional MCP should advertise only implemented product tools");
+            TestSupport.AssertTrue(productTools.Count == 13, "functional MCP should advertise only implemented product tools");
             TestSupport.AssertTrue(productTools.All(t => !t!["name"]!.GetValue<string>().StartsWith("mempalace_kg_", StringComparison.Ordinal)),
                 "functional MCP must not advertise parity-only KG stubs");
             var add = ToolResult(server, "mempalace_add_drawer",
@@ -103,6 +103,21 @@ public static class McpServerTests
                 "functional MCP status");
             var search = ToolResult(server, "mempalace_search", new JsonObject { ["query"] = "durable BogDB memory" });
             TestSupport.AssertTrue(search["results"] is JsonArray { Count: 1 }, "functional MCP search");
+
+            var project = Directory.CreateTempSubdirectory("bogmem-mcp-mine-").FullName;
+            try
+            {
+                File.WriteAllText(Path.Combine(project, "notes.md"),
+                    string.Join("\n\n", Enumerable.Repeat("MCP project mining stores verbatim durable notes.", 40)));
+                var mine = ToolResult(server, "mempalace_mine",
+                    new JsonObject { ["source"] = project, ["wing"] = "mcp_project" });
+                TestSupport.AssertTrue(mine["success"]!.GetValue<bool>() && mine["drawers_written"]!.GetValue<int>() > 0,
+                    "functional MCP mine should write project drawers");
+            }
+            finally
+            {
+                if (Directory.Exists(project)) Directory.Delete(project, recursive: true);
+            }
         }
         finally
         {

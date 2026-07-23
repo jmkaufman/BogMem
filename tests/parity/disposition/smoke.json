@@ -42,6 +42,14 @@
       "slice": "P1"
     },
     {
+      "test_id": "project_miner",
+      "module": "ProjectMiner",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "git-aware idempotent project ingestion",
+      "slice": "P2"
+    },
+    {
       "test_id": "ids",
       "module": "IdRecipes",
       "status": "pass",

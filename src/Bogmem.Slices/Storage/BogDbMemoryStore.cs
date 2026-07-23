@@ -54,6 +54,63 @@ public sealed class BogDbMemoryStore : IMemoryStore
         }
     }
 
+    public SourceReplaceResult ReplaceSource(
+        string wing,
+        string room,
+        string sourceFile,
+        IReadOnlyList<string> chunks,
+        string addedBy = "mempalace",
+        bool dryRun = false)
+    {
+        wing = Required(wing, nameof(wing));
+        room = Required(room, nameof(room));
+        sourceFile = Required(sourceFile, nameof(sourceFile));
+        ArgumentNullException.ThrowIfNull(chunks);
+        addedBy = string.IsNullOrWhiteSpace(addedBy) ? "mempalace" : addedBy.Trim();
+
+        var filedAt = DateTimeOffset.UtcNow.ToString("O");
+        var expected = chunks.Select((content, chunkIndex) =>
+        {
+            content = Required(content, $"{nameof(chunks)}[{chunkIndex}]", trim: false);
+            return new MemoryDrawer(
+                IdRecipes.MakeDrawerIdFromChunk(wing, room, sourceFile, chunkIndex),
+                wing,
+                room,
+                content,
+                sourceFile,
+                addedBy,
+                filedAt,
+                IdRecipes.IdRecipe,
+                _embedder.Embed(content));
+        }).ToArray();
+
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            var current = ReadAll()
+                .Where(d => string.Equals(d.SourceFile, sourceFile, StringComparison.Ordinal))
+                .OrderBy(d => d.Id, StringComparer.Ordinal)
+                .ToArray();
+            var expectedById = expected.OrderBy(d => d.Id, StringComparer.Ordinal).ToArray();
+            var changed = current.Length != expectedById.Length ||
+                          current.Where((drawer, index) => !EquivalentSourceDrawer(drawer, expectedById[index])).Any();
+            if (!changed || dryRun)
+                return new(sourceFile, current.Length, expected.Length, changed, Applied: false);
+
+            _connection.ExecuteWriteTransaction(() =>
+            {
+                var deleted = _connection.Query(
+                    "MATCH (d:Drawer) WHERE d.source_file = $source DELETE d",
+                    new Dictionary<string, object?> { ["source"] = sourceFile });
+                if (!deleted.IsSuccess)
+                    throw new InvalidOperationException($"BogDB query failed: {deleted.ErrorMessage}");
+                foreach (var drawer in expected)
+                    _connection.UpsertNodeById(Table, drawer.Id, ToProperties(drawer));
+            });
+            return new(sourceFile, current.Length, expected.Length, Changed: true, Applied: true);
+        }
+    }
+
     public MemoryDrawer? Get(string id)
     {
         lock (_gate)
@@ -193,19 +250,30 @@ public sealed class BogDbMemoryStore : IMemoryStore
 
     private void Upsert(MemoryDrawer drawer)
     {
-        _connection.Graph().AddNode(Table, drawer.Id, new Dictionary<string, object>
-        {
-            ["id"] = drawer.Id,
-            ["wing"] = drawer.Wing,
-            ["room"] = drawer.Room,
-            ["content"] = drawer.Content,
-            ["source_file"] = drawer.SourceFile,
-            ["added_by"] = drawer.AddedBy,
-            ["filed_at"] = drawer.FiledAt,
-            ["id_recipe"] = drawer.IdRecipe,
-            ["embedding"] = drawer.Embedding.ToArray(),
-        }).Commit();
+        _connection.Graph().AddNode(Table, drawer.Id, ToProperties(drawer)).Commit();
     }
+
+    private static Dictionary<string, object> ToProperties(MemoryDrawer drawer) => new()
+    {
+        ["id"] = drawer.Id,
+        ["wing"] = drawer.Wing,
+        ["room"] = drawer.Room,
+        ["content"] = drawer.Content,
+        ["source_file"] = drawer.SourceFile,
+        ["added_by"] = drawer.AddedBy,
+        ["filed_at"] = drawer.FiledAt,
+        ["id_recipe"] = drawer.IdRecipe,
+        ["embedding"] = drawer.Embedding.ToArray(),
+    };
+
+    private static bool EquivalentSourceDrawer(MemoryDrawer current, MemoryDrawer expected) =>
+        string.Equals(current.Id, expected.Id, StringComparison.Ordinal) &&
+        string.Equals(current.Wing, expected.Wing, StringComparison.Ordinal) &&
+        string.Equals(current.Room, expected.Room, StringComparison.Ordinal) &&
+        string.Equals(current.Content, expected.Content, StringComparison.Ordinal) &&
+        string.Equals(current.SourceFile, expected.SourceFile, StringComparison.Ordinal) &&
+        string.Equals(current.AddedBy, expected.AddedBy, StringComparison.Ordinal) &&
+        string.Equals(current.IdRecipe, expected.IdRecipe, StringComparison.Ordinal);
 
     private MemoryDrawer? GetCore(string id)
     {

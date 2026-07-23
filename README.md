@@ -15,6 +15,7 @@ dotnet run --project src/Bogmem.Cli -- add \
   --room decisions \
   --content "We chose BogDB for durable local memory."
 
+dotnet run --project src/Bogmem.Cli -- mine . --wing myproject
 dotnet run --project src/Bogmem.Cli -- search "why did we choose BogDB?"
 dotnet run --project src/Bogmem.Cli -- status
 ```
@@ -25,9 +26,24 @@ Run the persistent MCP server over newline-delimited JSON-RPC on stdio:
 dotnet run --project src/Bogmem.Cli -- mcp --palace ~/.bogmem/palace
 ```
 
-The functional MCP path currently backs status, taxonomy/listing, search,
-duplicate checks, and drawer CRUD with BogDB. Parity-only tool definitions stay
-in the compatibility harness but are not advertised by the live server.
+The functional MCP path currently backs status, taxonomy/listing, project
+mining, search, duplicate checks, and drawer CRUD with BogDB. Parity-only tool
+definitions stay in the compatibility harness but are not advertised by the
+live server.
+
+### Project mining
+
+`bogmem mine` ingests the same ordinary text and code extensions as the
+MemPalace project miner. In a Git worktree it asks Git for tracked and
+non-ignored untracked files; elsewhere it skips common generated directories.
+Files are stored verbatim using the parity-proven window chunker and legacy
+source/chunk ID recipe. A changed source is replaced atomically, while an
+unchanged rerun performs no writes.
+
+This first miner slice deliberately routes to `general` unless `--room` is
+supplied. Conversation and office-document extraction, YAML room classification,
+and orphan pruning are not implemented yet. Use `--dry-run` to inspect counts
+without changing the palace.
 
 ### Retrieval status
 

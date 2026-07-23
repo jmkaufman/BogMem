@@ -80,6 +80,26 @@ public static class CliExitCodeTests
             using (var searchJson = JsonDocument.Parse(search.Stdout))
                 if (searchJson.RootElement.GetProperty("results").GetArrayLength() != 1) failures.Add("product search should retrieve drawer");
 
+            var mineSource = Path.Combine(scratch, "mine-source");
+            Directory.CreateDirectory(mineSource);
+            File.WriteAllText(Path.Combine(mineSource, "notes.md"),
+                string.Join("\n\n", Enumerable.Repeat("CLI mining stores project notes in BogDB.", 40)));
+            var dryMine = InvokeCapture([
+                "mine", mineSource, "--palace", productPalace, "--wing", "cli_project", "--dry-run"
+            ], TestKit.Root);
+            Expect(failures, "product mine dry-run -> 0", 0, dryMine.Code);
+            using (var dryMineJson = JsonDocument.Parse(dryMine.Stdout))
+                if (dryMineJson.RootElement.GetProperty("drawersWritten").GetInt32() != 0)
+                    failures.Add("product mine dry-run should not write");
+
+            var mine = InvokeCapture([
+                "mine", mineSource, "--palace", productPalace, "--wing", "cli_project"
+            ], TestKit.Root);
+            Expect(failures, "product mine -> 0", 0, mine.Code);
+            using (var mineJson = JsonDocument.Parse(mine.Stdout))
+                if (mineJson.RootElement.GetProperty("drawersWritten").GetInt32() == 0)
+                    failures.Add("product mine should write project drawers");
+
             // The canonical full-corpus gate is one aggregate invocation. It must
             // run every leaf module and produce an aggregate report, rather than
             // being rejected as an unknown module before dispatch.

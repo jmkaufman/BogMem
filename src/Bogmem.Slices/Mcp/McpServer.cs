@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bogmem.Slices.Mining;
 using Bogmem.Slices.Storage;
 
 namespace Bogmem.Slices.Mcp;
@@ -46,7 +47,7 @@ public sealed class McpServer
         "mempalace_status", "mempalace_list_wings", "mempalace_list_rooms", "mempalace_get_taxonomy",
         "mempalace_search", "mempalace_check_duplicate", "mempalace_add_drawer",
         "mempalace_delete_drawer", "mempalace_delete_by_source", "mempalace_get_drawer",
-        "mempalace_list_drawers", "mempalace_update_drawer",
+        "mempalace_list_drawers", "mempalace_update_drawer", "mempalace_mine",
     };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -146,8 +147,10 @@ public sealed class McpServer
                     ["name"] = t.Name,
                     ["description"] = _memoryStore is not null && t.Name == "mempalace_search"
                         ? "Exact local hybrid lexical search over persistent BogDB drawers. Returns verbatim content with distance and ranking scores."
+                        : _memoryStore is not null && t.Name == "mempalace_mine"
+                            ? "Mine ordinary project text and code into persistent BogDB drawers. Respects Git excludes, chunks verbatim, and atomically replaces each changed source. Only mode='projects' is implemented."
                         : t.Description,
-                    ["inputSchema"] = t.InputSchema.DeepClone(),
+                    ["inputSchema"] = ProductInputSchema(t),
                 });
             }
             return new JsonObject
@@ -325,6 +328,7 @@ public sealed class McpServer
             "mempalace_get_drawer" => GetDrawerResult(RequiredArg(args, "drawer_id")),
             "mempalace_list_drawers" => ListDrawersResult(args),
             "mempalace_update_drawer" => UpdateDrawerResult(args),
+            "mempalace_mine" => MineResult(args),
             _ => new JsonObject
             {
                 ["success"] = false,
@@ -480,6 +484,57 @@ public sealed class McpServer
         var dryRun = args["dry_run"]?.GetValue<bool>() ?? true;
         var count = _memoryStore!.DeleteBySource(source, dryRun);
         return new JsonObject { ["success"] = true, ["dry_run"] = dryRun, [dryRun ? "matched" : "deleted"] = count };
+    }
+
+    private JsonObject MineResult(JsonObject args)
+    {
+        var mode = ArgString(args, "mode") ?? "projects";
+        if (!string.Equals(mode, "projects", StringComparison.Ordinal))
+            return new JsonObject
+            {
+                ["success"] = false,
+                ["mode"] = mode,
+                ["error"] = "Only mode='projects' is implemented by the BogDB product backend.",
+            };
+
+        var result = new ProjectMiner(_memoryStore!).Mine(new ProjectMineRequest(
+            RequiredArg(args, "source"),
+            ArgString(args, "wing"),
+            "general",
+            ArgString(args, "agent") ?? "mempalace",
+            ArgInt(args, "limit", 0, 0, int.MaxValue),
+            args["dry_run"]?.GetValue<bool>() ?? false));
+        return new JsonObject
+        {
+            ["success"] = true,
+            ["mode"] = mode,
+            ["dry_run"] = result.DryRun,
+            ["source"] = result.Source,
+            ["wing"] = result.Wing,
+            ["room"] = result.Room,
+            ["files_discovered"] = result.FilesDiscovered,
+            ["files_processed"] = result.FilesProcessed,
+            ["files_changed"] = result.FilesChanged,
+            ["files_unchanged"] = result.FilesUnchanged,
+            ["files_skipped"] = result.FilesSkipped,
+            ["drawers_planned"] = result.DrawersPlanned,
+            ["drawers_written"] = result.DrawersWritten,
+            ["warnings"] = new JsonArray(result.Warnings.Select(warning => (JsonNode?)JsonValue.Create(warning)).ToArray()),
+        };
+    }
+
+    private JsonNode ProductInputSchema(ToolSpec tool)
+    {
+        var schema = tool.InputSchema.DeepClone();
+        if (_memoryStore is null || tool.Name != "mempalace_mine") return schema;
+        if (schema["properties"]?["mode"] is JsonObject mode)
+        {
+            mode["enum"] = new JsonArray("projects");
+            mode["description"] = "Project code/docs ingestion. This is the only mode currently implemented by BogMem.";
+        }
+        if (schema["properties"] is JsonObject properties)
+            properties.Remove("extract");
+        return schema;
     }
 
     private IReadOnlyList<MemoryDrawer> AllDrawers()

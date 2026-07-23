@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bogmem.Slices.Mcp;
+using Bogmem.Slices.Mining;
 using Bogmem.Slices.Storage;
 
 namespace Bogmem.Cli;
@@ -28,6 +29,8 @@ public static class CliMain
                 Commands:
                   init [--palace path]
                   add --wing name --room name --content text [--source-file path] [--palace path]
+                  mine directory [--wing name] [--room name] [--agent name] [--limit n]
+                                 [--max-chunks-per-file n] [--dry-run] [--palace path]
                   search "query" [--wing name] [--room name] [--limit n] [--palace path]
                   status [--palace path]
                   list [--wing name] [--room name] [--limit n] [--offset n] [--palace path]
@@ -146,6 +149,29 @@ public static class CliMain
                         parsed.Options.GetValueOrDefault("added-by") ?? "cli"));
                 return 0;
 
+            case "mine":
+            {
+                ValidateOptions(
+                    parsed,
+                    ["palace", "wing", "room", "agent", "limit", "max-chunks-per-file"],
+                    ["dry-run"]);
+                var source = Path.GetFullPath(SinglePositional(parsed, "mine requires a source directory"), workingDirectory);
+                using var store = new BogDbMemoryStore(palace);
+                var miner = new ProjectMiner(store);
+                var maxChunks = parsed.Options.ContainsKey("max-chunks-per-file")
+                    ? LongOption(parsed, "max-chunks-per-file", 0, 0, long.MaxValue)
+                    : (long?)null;
+                WriteJson(stdout, miner.Mine(new ProjectMineRequest(
+                    source,
+                    parsed.Options.GetValueOrDefault("wing"),
+                    parsed.Options.GetValueOrDefault("room") ?? "general",
+                    parsed.Options.GetValueOrDefault("agent") ?? "mempalace",
+                    IntOption(parsed, "limit", 0, 0, int.MaxValue),
+                    parsed.Flags.Contains("dry-run"),
+                    maxChunks)));
+                return 0;
+            }
+
             case "search":
             {
                 ValidateOptions(parsed, ["palace", "query", "wing", "room", "source-file", "limit", "max-distance"]);
@@ -260,7 +286,7 @@ public static class CliMain
                 continue;
             }
             var name = arg[2..];
-            if (name == "read-only") { flags.Add(name); continue; }
+            if (name is "read-only" or "dry-run") { flags.Add(name); continue; }
             if (i + 1 >= args.Length || args[i + 1].StartsWith("--", StringComparison.Ordinal))
                 throw new ArgumentException($"Option '{arg}' requires a value.");
             options[name] = args[++i];
@@ -299,6 +325,14 @@ public static class CliMain
         if (!parsed.Options.TryGetValue(name, out var raw)) return fallback;
         if (!double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value))
             throw new ArgumentException($"--{name} must be a number");
+        return value;
+    }
+
+    private static long LongOption(ParsedArguments parsed, string name, long fallback, long min, long max)
+    {
+        if (!parsed.Options.TryGetValue(name, out var raw)) return fallback;
+        if (!long.TryParse(raw, out var value) || value < min || value > max)
+            throw new ArgumentException($"--{name} must be an integer between {min} and {max}");
         return value;
     }
 
