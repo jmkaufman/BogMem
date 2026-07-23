@@ -104,7 +104,7 @@ is tested and documented; see
 
 ### Retrieval status
 
-The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.3 maintains a
+The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.3.1 maintains a
 cosine HNSW index and a full-text BM25 index across commits, deletes, and
 reopen. BogMem combines their scores with the MemPalace-compatible 0.6/0.4
 weighting. Vector candidates come from the same 384-dimensional
@@ -118,9 +118,8 @@ dependency-free lexical retrieval, set `BOGMEM_EMBEDDING_MODEL=lexical`; set it
 back to `minilm` to migrate the palace to semantic vectors.
 
 Ordinary searches hydrate only a bounded union of HNSW and FTS candidates,
-rather than loading the palace into application memory. Scoped wing/room/source
-searches retain a correctness-first metadata scan until BogDB's secondary-index
-replacement lifecycle is hardened.
+rather than loading the palace into application memory. BogDB secondary indexes
+also serve scoped wing/room/source searches and source-replacement deletes.
 
 No Chroma process or Chroma package is used by the product path.
 

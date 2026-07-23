@@ -461,6 +461,11 @@ public sealed class BogDbMemoryStore : IMemoryStore
 
     private void EnsureRetrievalIndexes()
     {
+        foreach (var property in new[] { "wing", "room", "source_file" })
+            QueryOrThrow(
+                $"CALL create_index('{Table}', '{property}') RETURN *",
+                context: $"{property} metadata index creation");
+
         QueryOrThrow(
             $"CALL create_vector_index('{Table}', '{VectorIndex}', 'embedding', 'cosine', skip_if_exists := true) RETURN *",
             context: "vector index creation");
@@ -593,9 +598,6 @@ public sealed class BogDbMemoryStore : IMemoryStore
 
     private MemoryDrawer[] ReadScoped(string? wing, string? room, string? sourceFile)
     {
-        // BogDB 1.3 secondary metadata indexes can retain duplicate/stale hits
-        // across delete-then-upsert source replacement. Keep this scoped path
-        // on the correct scan until that lifecycle is hardened upstream.
         var predicates = new List<string>();
         var parameters = new Dictionary<string, object?>();
         if (wing is not null)
@@ -616,7 +618,6 @@ public sealed class BogDbMemoryStore : IMemoryStore
 
         var where = predicates.Count == 0 ? "" : " WHERE " + string.Join(" AND ", predicates);
         return Execute(Projection + where + " RETURN " + ReturnFields, parameters)
-            .DistinctBy(drawer => drawer.Id, StringComparer.Ordinal)
             .ToArray();
     }
 

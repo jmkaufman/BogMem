@@ -59,6 +59,7 @@ public static class BogDbMemoryStoreTests
 
         VerifyOriginMigration();
         VerifyEmbeddingModelMigration();
+        VerifyIndexedSourceReplacement();
         VerifyCandidateSearchBeyondOverfetchWindow();
     }
 
@@ -171,6 +172,50 @@ public static class BogDbMemoryStoreTests
                 scoped.Count > 0 && scoped.All(hit => hit.Drawer.Wing == "west") &&
                 scoped[0].Drawer.Content.Contains("drip irrigation", StringComparison.Ordinal),
                 "scoped search should remain complete and isolated beyond the overfetch window");
+        }
+        finally
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private static void VerifyIndexedSourceReplacement()
+    {
+        var path = Directory.CreateTempSubdirectory("bogmem-bogdb-indexed-replacement-").FullName;
+        const string source = "/notes/indexed-source.md";
+        try
+        {
+            using (var initial = new BogDbMemoryStore(path, new LexicalHashEmbedder()))
+                initial.ReplaceSource(
+                    "project",
+                    "operations",
+                    source,
+                    Enumerable.Range(0, 5)
+                        .Select(index => $"Original indexed source chunk {index} describes ordinary operations.")
+                        .ToArray());
+
+            var replacement = Enumerable.Range(0, 3)
+                .Select(index => $"Replacement indexed source chunk {index} documents the heliotrope procedure.")
+                .ToArray();
+            using (var reopened = new BogDbMemoryStore(path, new LexicalHashEmbedder()))
+            {
+                var result = reopened.ReplaceSource("project", "operations", source, replacement);
+                TestSupport.AssertTrue(
+                    result.Applied && result.PreviousDrawers == 5 && result.CurrentDrawers == 3,
+                    "persisted indexed source replacement should replace every prior drawer");
+
+                var scoped = reopened.Search("heliotrope procedure", limit: 10, sourceFile: source);
+                TestSupport.AssertTrue(
+                    scoped.Count == 3 &&
+                    scoped.Select(hit => hit.Drawer.Id).Distinct(StringComparer.Ordinal).Count() == 3 &&
+                    scoped.All(hit => hit.Drawer.Content.StartsWith("Replacement", StringComparison.Ordinal)),
+                    "persisted indexed source lookup should contain no stale or duplicate hits after replacement");
+            }
+
+            using var final = new BogDbMemoryStore(path, new LexicalHashEmbedder());
+            TestSupport.AssertTrue(
+                final.DeleteBySource(source, dryRun: false) == 3 && final.Status().Drawers == 0,
+                "persisted indexed source deletion should remove every matching drawer");
         }
         finally
         {
