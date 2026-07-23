@@ -85,10 +85,12 @@ older BogMem schema are protected.
 ## Integration examples
 
 See [`samples/`](samples/README.md) for copyable CLI automation, a generic MCP
-host configuration, and a runnable embedded .NET lifecycle:
+host configuration, a runnable embedded .NET lifecycle, and a molecule
+capability retrieval API:
 
 ```bash
 dotnet run --project samples/Bogmem.Quickstart
+dotnet run --project samples/Bogmem.MoleculeApi -- --demo
 ```
 
 The frozen parity layer is evidence about the port, not an endorsement of every

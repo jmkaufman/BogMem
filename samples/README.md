@@ -3,6 +3,21 @@
 BogMem has three integration surfaces. Pick the smallest one that fits your
 application; all three use the same persistent BogDB palace.
 
+## Real-world service example
+
+[`Bogmem.MoleculeApi`](Bogmem.MoleculeApi/README.md) is a runnable ASP.NET
+service for biological molecule memory. It demonstrates stable entity upserts,
+sourced structured records, free-text candidate retrieval, and exact
+all-capabilities filtering:
+
+```bash
+dotnet run --project samples/Bogmem.MoleculeApi -- --demo
+```
+
+Use this sample when the application needs to answer questions such as “which
+molecules provide DNA repair and homologous recombination?” without treating a
+similarity score as proof that both constraints matched.
+
 ## 1. CLI automation
 
 Use the CLI from scripts, CI jobs, editor tasks, or a terminal:
