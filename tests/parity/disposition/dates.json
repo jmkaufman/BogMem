@@ -1,0 +1,29 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "dates_golden_replay",
+      "module": "dates",
+      "status": "covered_by_golden",
+      "rule": "EXACT",
+      "reason": "all 18 golden/dates vectors replayed, iso \u002B tier exact",
+      "slice": "S2"
+    },
+    {
+      "test_id": "dates_mtime_utc",
+      "module": "dates",
+      "status": "covered_by_golden",
+      "rule": "EXACT",
+      "reason": "mtime vector materialized on disk and interpreted in UTC per manifest",
+      "slice": "S2"
+    },
+    {
+      "test_id": "dates_fuzzy_gate",
+      "module": "dates",
+      "status": "covered_by_golden",
+      "rule": "EXACT",
+      "reason": "PR #1584 hallucination-gate cases (junk filename, version string, partial year) return None",
+      "slice": "S2"
+    }
+  ]
+}

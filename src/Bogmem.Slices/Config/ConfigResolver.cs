@@ -1,0 +1,36 @@
+using System.Text.Json;
+namespace Bogmem.Slices.Config;
+public sealed record BogmemConfig(
+ string Backend="chroma", int ChunkSize=800, int ChunkOverlap=100, int MinChunkSize=50,
+ bool MinChunkSizeExplicit=false, string? PalacePath=null,
+ bool HooksAutoSave=false, bool HookUseDaemon=false);
+public static class ConfigResolver
+{
+ public static BogmemConfig Resolve(JsonElement? file=null,IReadOnlyDictionary<string,string?>? environment=null)
+ { var f=file is {ValueKind:JsonValueKind.Object} x?x:new JsonElement(); var e=environment??Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>().ToDictionary(x=>x.Key.ToString()!,x=>x.Value?.ToString());
+  string? Get(string key)=>f.ValueKind==JsonValueKind.Object&&f.TryGetProperty(key,out var p)&&p.ValueKind==JsonValueKind.String?p.GetString():null;
+  bool FileBool(string key, bool fallback) => f.ValueKind == JsonValueKind.Object && f.TryGetProperty(key, out var p)
+    ? CoerceBool(p, fallback) : fallback;
+  bool EnvBool(string key, bool fallback, bool inclusive) => GetEnv(e, key) is { } value
+    ? CoerceBool(value, fallback, inclusive) : fallback;
+  var backend=(Get("backend")??GetEnv(e,"MEMPALACE_BACKEND")??"chroma").ToLowerInvariant(); if(backend is not("chroma" or "sqlite_exact" or "milvus" or "qdrant" or "pgvector" or "bogdb")) backend="chroma";
+  int Number(string key,int fallback){if(f.ValueKind==JsonValueKind.Object&&f.TryGetProperty(key,out var p)&&p.ValueKind==JsonValueKind.Number&&p.TryGetInt32(out var n)&&n>0)return n;return fallback;}
+  var explicitMin=f.ValueKind==JsonValueKind.Object&&f.TryGetProperty("min_chunk_size",out _); var palace=GetEnv(e,"MEMPALACE_PALACE_PATH")??Get("palace_path");
+  // These two legacy properties intentionally have different coercion rules:
+  // hooks_auto_save treats an unrecognised value as true, while hook_use_daemon
+  // treats it as false.  File values use normal JSON truthiness.
+  var hooks = FileBool("hooks_auto_save", EnvBool("MEMPALACE_HOOKS_AUTO_SAVE", false, true));
+  var daemon = FileBool("hook_use_daemon", EnvBool("MEMPALACE_HOOK_USE_DAEMON", false, false));
+  return new(backend,Number("chunk_size",800),Number("chunk_overlap",100),Number("min_chunk_size",50),explicitMin,palace,hooks,daemon);
+ }
+ private static string? GetEnv(IReadOnlyDictionary<string,string?> e,string k)=>e.TryGetValue(k,out var v)?v:null;
+ private static bool CoerceBool(JsonElement value,bool fallback,bool inclusive=true) => value.ValueKind switch {
+  JsonValueKind.True => true, JsonValueKind.False => false,
+  JsonValueKind.Number when value.TryGetInt32(out var n) => n != 0,
+  JsonValueKind.String => CoerceBool(value.GetString() ?? "", fallback, inclusive), _ => fallback };
+ private static bool CoerceBool(string value,bool fallback,bool inclusive=true) {
+  if (bool.TryParse(value, out var b)) return b;
+  if (int.TryParse(value, out var n)) return n != 0;
+  return inclusive ? true : fallback;
+ }
+}

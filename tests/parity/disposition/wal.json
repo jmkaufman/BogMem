@@ -1,0 +1,21 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "wal_jsonl_exact",
+      "module": "wal",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S10"
+    },
+    {
+      "test_id": "wal_redaction",
+      "module": "wal",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "covered_by_golden",
+      "slice": "S10"
+    }
+  ]
+}

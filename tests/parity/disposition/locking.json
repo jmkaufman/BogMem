@@ -1,0 +1,213 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "palace-key:/no/such/dir/palace",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/no/such/dir/palace/",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/no/such/dir/../elsewhere/palace",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/no/such/./dir/palace",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/No/Such/Dir/Palace",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/no//such///dir/palace",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/\u043F\u0430\u043B\u0430\u0301\u0446/m\u00E9moire/\u5BAE\u6BBF",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/no/such/dir/palace with spaces",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/a/b/c/../../x",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/..",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "palace-key:/",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "mine-lock-name:/no/such/file.md",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "mine-lock-name:relative/path.txt",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "mine-lock-name:/No/Such/File.MD",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "mine-lock-name:/\u043F\u0430\u043B\u0430\u0301\u0446/\u0444\u0430\u0439\u043B.md",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "mine-lock-name:\u003Cempty\u003E",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u002712345 mempalace mine ~/proj\u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u002712345\u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u002712345    \u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u002712345 \\t mempalace\u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u0027notapid mempalace\u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u0027\u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u0027   \u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u002799 a b c d e\u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "holder:\u002712a45 cmd\u0027",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S11"
+    },
+    {
+      "test_id": "semantics",
+      "module": "locks",
+      "status": "converted",
+      "rule": "EXACT",
+      "reason": "non-blocking \u002B re-entrant \u002B byte-1 holder identity verified in-process",
+      "slice": "S11"
+    }
+  ]
+}

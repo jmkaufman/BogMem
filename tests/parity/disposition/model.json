@@ -1,0 +1,29 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "model_meta_golden_replay",
+      "module": "model",
+      "status": "covered_by_golden",
+      "rule": "EXACT",
+      "reason": "golden/model inventory parsed; id/dims/ef_name agree with module manifest",
+      "slice": "S3"
+    },
+    {
+      "test_id": "model_cache_verification",
+      "module": "model",
+      "status": "covered_by_golden",
+      "rule": "EXACT",
+      "reason": "golden sha256 digests drive missing/corrupt cache detection; hasher cross-checked",
+      "slice": "S3"
+    },
+    {
+      "test_id": "model_bytes_not_vendored",
+      "module": "model",
+      "status": "not_applicable",
+      "rule": "PLACEHOLDER",
+      "reason": "the ~90MB ONNX blobs are not vendored; live-cache byte verification runs out-of-band via ModelInventory.IsCacheVerified",
+      "slice": "S3"
+    }
+  ]
+}

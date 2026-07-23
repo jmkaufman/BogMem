@@ -1,0 +1,29 @@
+{
+  "schema": "ase.test_disposition_ledger.v1",
+  "rows": [
+    {
+      "test_id": "search_cli_hybrid",
+      "module": "search",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S4"
+    },
+    {
+      "test_id": "search_mcp_closet",
+      "module": "search",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": null,
+      "slice": "S4"
+    },
+    {
+      "test_id": "search_tie_breaks",
+      "module": "search",
+      "status": "pass",
+      "rule": "EXACT",
+      "reason": "covered_by_golden",
+      "slice": "S4"
+    }
+  ]
+}
