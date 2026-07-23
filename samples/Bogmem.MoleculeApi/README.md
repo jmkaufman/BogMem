@@ -47,8 +47,9 @@ at startup.
 `MoleculeMemoryService` is the integration boundary worth copying. Each molecule
 is serialized into one drawer and replaced through a stable
 `molecule://human/{symbol}` source. BogMem owns persistence and ranked candidate
-retrieval. The application owns record validation, controlled vocabulary, and
-the exact all-functions predicate.
+retrieval through BogDB's commit-maintained HNSW and BM25 indexes. The
+application owns record validation, controlled vocabulary, and the exact
+all-functions predicate.
 
 The four seed records are compact educational summaries linked to their NCBI
 Gene entries:

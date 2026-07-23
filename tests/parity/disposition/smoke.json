@@ -38,7 +38,7 @@
       "module": "BogDbMemoryStore",
       "status": "pass",
       "rule": "PRODUCT",
-      "reason": "persistent CRUD \u002B exact hybrid retrieval",
+      "reason": "persistent CRUD \u002B native HNSW/BM25 hybrid retrieval",
       "slice": "P1"
     },
     {

@@ -50,7 +50,7 @@ smoke.Append("config", "ConfigResolver", "pass", "EXACT", slice: "S8");
 smoke.Append("embedder", "Embedder", "pass", "ULP", slice: "S3");
 smoke.Append("chroma", "ChromaStore", "pass", "BOUNDED", slice: "S7");
 smoke.Append("knowledge_graph", "KnowledgeGraphStore", "pass", "EXACT", slice: "S5c");
-smoke.Append("bogdb_memory_store", "BogDbMemoryStore", "pass", "PRODUCT", "persistent CRUD + exact hybrid retrieval", "P1");
+smoke.Append("bogdb_memory_store", "BogDbMemoryStore", "pass", "PRODUCT", "persistent CRUD + native HNSW/BM25 hybrid retrieval", "P1");
 smoke.Append("project_config", "ProjectConfig", "pass", "PRODUCT", "YAML room routing with explicit overrides", "P4");
 smoke.Append("project_miner", "ProjectMiner", "pass", "PRODUCT", "git-aware idempotent project ingestion", "P2");
 smoke.Append("project_sync", "ProjectSync", "pass", "PRODUCT", "safe dry-run/apply project pruning", "P3");

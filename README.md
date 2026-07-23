@@ -100,12 +100,13 @@ is tested and documented; see
 
 ### Retrieval status
 
-The current retrieval mode is `exact-hybrid-lexical`: deterministic hashed
-word/trigram vectors plus MemPalace-compatible BM25 reranking. It is useful for
-local retrieval and accurately labels itself, but it is not yet the original
-ONNX semantic embedder. Stored embeddings and the storage boundary are ready
-for that replacement. ANN is also intentionally disabled until BogDB's HNSW
-index remains current after mutation and is rebuilt or restored on reopen.
+The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.3 maintains a
+cosine HNSW index and a full-text BM25 index across commits, deletes, and
+reopen. BogMem combines their scores with the MemPalace-compatible 0.6/0.4
+weighting. The vectors are still deterministic hashed word/trigram features,
+so this is fast local lexical retrieval—not yet the original ONNX semantic
+embedder. `IMemoryStore` keeps that eventual embedding replacement behind the
+same application boundary.
 
 No Chroma process or Chroma package is used by the product path.
 

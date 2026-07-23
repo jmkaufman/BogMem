@@ -24,9 +24,11 @@ public static class BogDbMemoryStoreTests
                 TestSupport.AssertTrue(results.Count == 2, "search should return both candidates");
                 TestSupport.AssertTrue(results[0].Drawer.Id == firstId, "hybrid retrieval should rank the GraphQL drawer first");
                 TestSupport.AssertTrue(results[0].Distance < results[1].Distance, "vector baseline should discriminate lexical relevance");
+                TestSupport.AssertTrue(results[0].Bm25Score > 0, "native BogDB FTS should contribute a BM25 score");
 
                 var status = store.Status();
                 TestSupport.AssertTrue(status.Backend == "bogdb" && status.Drawers == 2 && status.Wings == 2, "status should reflect persisted drawers");
+                TestSupport.AssertTrue(status.RetrievalMode == "bogdb-hnsw-bm25-hybrid", "status should advertise native BogDB retrieval");
             }
 
             using (var reopened = new BogDbMemoryStore(path))
@@ -35,6 +37,10 @@ public static class BogDbMemoryStoreTests
                 TestSupport.AssertTrue(reopened.List(wing: "project").Count == 1, "wing filter should survive reopen");
                 var updated = reopened.Update(firstId, content: "GraphQL remains the typed API contract.", room: "architecture");
                 TestSupport.AssertTrue(updated?.Room == "architecture", "update should persist new metadata");
+                var updatedSearch = reopened.Search("typed contract", limit: 1);
+                TestSupport.AssertTrue(
+                    updatedSearch.Count == 1 && updatedSearch[0].Drawer.Id == firstId && updatedSearch[0].Bm25Score > 0,
+                    "vector and FTS indexes should reflect committed updates");
                 TestSupport.AssertTrue(reopened.DeleteBySource("/notes/list.md") == 1, "delete-by-source should dry-run by default");
                 TestSupport.AssertTrue(reopened.Status().Drawers == 2, "dry-run must not delete");
                 TestSupport.AssertTrue(reopened.DeleteBySource("/notes/list.md", dryRun: false) == 1, "delete-by-source should report committed count");
@@ -83,6 +89,12 @@ public static class BogDbMemoryStoreTests
             using var migrated = new BogDbMemoryStore(path);
             TestSupport.AssertTrue(migrated.Get("legacy_drawer")?.Origin == "legacy",
                 "existing drawer should be protected as legacy after migration");
+            TestSupport.AssertTrue(
+                migrated.Get("legacy_drawer")?.Embedding.Count == Bogmem.Slices.Embedding.LexicalHashEmbedder.Dimensions,
+                "legacy embeddings should be normalized before HNSW indexing");
+            TestSupport.AssertTrue(
+                migrated.Search("existing legacy drawer", limit: 1).Single().Drawer.Id == "legacy_drawer",
+                "legacy drawers should be searchable through the migrated native indexes");
             var added = migrated.Add("migration", "manual", "Schema migration keeps older palaces readable.");
             TestSupport.AssertTrue(added.Drawer.Origin == "manual", "new drawer should receive manual ownership after migration");
         }

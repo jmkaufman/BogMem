@@ -1,5 +1,12 @@
 using System.Collections;
+using System.Buffers.Binary;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using BogDb.Core.Main;
+using BogDb.Core.Main.QueryResult;
+using BogDb.Extensions.FTS;
+using BogDb.Extensions.Vector;
 using Bogmem.Slices.Embedding;
 using Bogmem.Slices.Ids;
 using Bogmem.Slices.Search;
@@ -7,17 +14,21 @@ using Bogmem.Slices.Search;
 namespace Bogmem.Slices.Storage;
 
 /// <summary>
-/// Persistent BogDB drawer backend. Retrieval is intentionally an exact scan
-/// for the first product slice: it stays correct across writes and reopen while
-/// BogDB's HNSW lifecycle is hardened. Stored vectors make a later ANN cutover
-/// a backend concern rather than a schema migration.
+/// Persistent BogDB drawer backend. BogDB owns the maintained HNSW and BM25
+/// indexes; a numeric-key search projection bridges Drawer string IDs to the
+/// FTS extension without leaking that implementation detail through IMemoryStore.
 /// </summary>
 public sealed class BogDbMemoryStore : IMemoryStore
 {
     private const string Table = "Drawer";
+    private const string SearchTable = "DrawerSearch";
+    private const string VectorIndex = "drawer_embedding_hnsw";
+    private const string FtsIndex = "drawer_content_fts";
+    private const int UnscopedOverfetch = 8;
     private readonly object _gate = new();
     private readonly BogDatabase _database;
     private readonly BogConnection _connection;
+    private readonly FtsExtension _ftsExtension;
     private readonly LexicalHashEmbedder _embedder = new();
     private bool _disposed;
 
@@ -28,8 +39,13 @@ public sealed class BogDbMemoryStore : IMemoryStore
         if (string.IsNullOrWhiteSpace(databasePath)) throw new ArgumentException("A BogDB palace path is required.", nameof(databasePath));
         DatabasePath = Path.GetFullPath(databasePath);
         _database = BogDatabase.Open(DatabasePath);
+        new VectorExtension().Load(_database);
+        _ftsExtension = new FtsExtension();
+        _ftsExtension.Load(_database);
         _connection = new BogConnection(_database);
         EnsureSchema();
+        ReconcileSearchProjection();
+        EnsureRetrievalIndexes();
     }
 
     public AddDrawerResult Add(string wing, string room, string content, string? sourceFile = null, string addedBy = "mcp")
@@ -100,13 +116,13 @@ public sealed class BogDbMemoryStore : IMemoryStore
 
             _connection.ExecuteWriteTransaction(() =>
             {
-                var deleted = _connection.Query(
+                foreach (var drawer in current)
+                    DeleteSearchProjection(drawer.Id);
+                QueryOrThrow(
                     "MATCH (d:Drawer) WHERE d.source_file = $source DELETE d",
                     new Dictionary<string, object?> { ["source"] = sourceFile });
-                if (!deleted.IsSuccess)
-                    throw new InvalidOperationException($"BogDB query failed: {deleted.ErrorMessage}");
                 foreach (var drawer in expected)
-                    _connection.UpsertNodeById(Table, drawer.Id, ToProperties(drawer));
+                    UpsertCore(drawer);
             });
             return new(sourceFile, current.Length, expected.Length, Changed: true, Applied: true);
         }
@@ -149,7 +165,8 @@ public sealed class BogDbMemoryStore : IMemoryStore
         lock (_gate)
         {
             ThrowIfDisposed();
-            var candidates = ReadAll()
+            var all = ReadAll();
+            var candidates = all
                 .Where(d => wing is null || string.Equals(d.Wing, wing, StringComparison.Ordinal))
                 .Where(d => room is null || string.Equals(d.Room, room, StringComparison.Ordinal))
                 .Where(d => sourceFile is null || string.Equals(d.SourceFile, sourceFile.Trim(), StringComparison.Ordinal))
@@ -157,15 +174,35 @@ public sealed class BogDbMemoryStore : IMemoryStore
             if (candidates.Length == 0) return [];
 
             var queryVector = _embedder.Embed(query);
-            var hits = candidates.Select(d => new Searcher.SearchHit(
-                d.Id, d.Content, CosineDistance(queryVector, d.Embedding), d.FiledAt, d.SourceFile,
-                new Dictionary<string, object?> { ["wing"] = d.Wing, ["room"] = d.Room })).ToArray();
-            var ranked = Searcher.HybridRank(hits, query);
             var byId = candidates.ToDictionary(d => d.Id, StringComparer.Ordinal);
-            return ranked
-                .Where(h => maxDistance <= 0 || (h.Distance is double distance && distance <= maxDistance))
+            var isScoped = wing is not null || room is not null || sourceFile is not null;
+            var candidateLimit = isScoped
+                ? all.Count
+                : Math.Min(all.Count, Math.Max(limit * UnscopedOverfetch, 64));
+            var distances = QueryVectorIndex(queryVector, candidateLimit);
+            var bm25Scores = QueryFtsIndex(query, candidateLimit);
+            var maxBm25 = bm25Scores
+                .Where(pair => byId.ContainsKey(pair.Key))
+                .Select(pair => pair.Value)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            return byId.Values
+                .Where(drawer => distances.ContainsKey(drawer.Id) || bm25Scores.ContainsKey(drawer.Id))
+                .Select(drawer =>
+                {
+                    var distance = distances.GetValueOrDefault(drawer.Id, 1.0);
+                    var bm25 = bm25Scores.GetValueOrDefault(drawer.Id);
+                    var normalizedBm25 = maxBm25 > 0 ? bm25 / maxBm25 : 0;
+                    var score = Searcher.VectorWeight * Searcher.DistanceToSimilarity(distance) +
+                                Searcher.Bm25Weight * normalizedBm25;
+                    return new MemorySearchResult(drawer, distance, score, Math.Round(bm25, 3));
+                })
+                .Where(hit => maxDistance <= 0 || hit.Distance <= maxDistance)
+                .OrderByDescending(hit => hit.Score)
+                .ThenByDescending(hit => hit.Drawer.FiledAt, StringComparer.Ordinal)
+                .ThenBy(hit => hit.Drawer.Id, StringComparer.Ordinal)
                 .Take(limit)
-                .Select(h => new MemorySearchResult(byId[h.Id], h.Distance ?? 1.0, h.HybridScore, h.Bm25Score))
                 .ToArray();
         }
     }
@@ -197,7 +234,11 @@ public sealed class BogDbMemoryStore : IMemoryStore
             ThrowIfDisposed();
             id = Required(id, nameof(id));
             if (GetCore(id) is null) return false;
-            Execute("MATCH (d:Drawer) WHERE d.id = $id DELETE d", new Dictionary<string, object?> { ["id"] = id });
+            _connection.ExecuteWriteTransaction(() =>
+            {
+                DeleteSearchProjection(id);
+                QueryOrThrow("MATCH (d:Drawer) WHERE d.id = $id DELETE d", new Dictionary<string, object?> { ["id"] = id });
+            });
             return true;
         }
     }
@@ -222,11 +263,10 @@ public sealed class BogDbMemoryStore : IMemoryStore
             {
                 foreach (var id in targets)
                 {
-                    var result = _connection.Query(
+                    DeleteSearchProjection(id);
+                    QueryOrThrow(
                         "MATCH (d:Drawer) WHERE d.id = $id DELETE d",
                         new Dictionary<string, object?> { ["id"] = id });
-                    if (!result.IsSuccess)
-                        throw new InvalidOperationException($"BogDB query failed: {result.ErrorMessage}");
                 }
             });
             return targets.Length;
@@ -239,9 +279,20 @@ public sealed class BogDbMemoryStore : IMemoryStore
         lock (_gate)
         {
             ThrowIfDisposed();
-            var count = ReadAll().Count(d => string.Equals(d.SourceFile, sourceFile, StringComparison.Ordinal));
+            var targets = ReadAll()
+                .Where(d => string.Equals(d.SourceFile, sourceFile, StringComparison.Ordinal))
+                .Select(d => d.Id)
+                .ToArray();
+            var count = targets.Length;
             if (!dryRun && count > 0)
-                Execute("MATCH (d:Drawer) WHERE d.source_file = $source DELETE d", new Dictionary<string, object?> { ["source"] = sourceFile });
+                _connection.ExecuteWriteTransaction(() =>
+                {
+                    foreach (var id in targets)
+                        DeleteSearchProjection(id);
+                    QueryOrThrow(
+                        "MATCH (d:Drawer) WHERE d.source_file = $source DELETE d",
+                        new Dictionary<string, object?> { ["source"] = sourceFile });
+                });
             return count;
         }
     }
@@ -256,7 +307,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
                 "bogdb", DatabasePath, drawers.Count,
                 drawers.Select(d => d.Wing).Distinct(StringComparer.Ordinal).Count(),
                 drawers.Select(d => (d.Wing, d.Room)).Distinct().Count(),
-                "exact-hybrid-lexical", LexicalHashEmbedder.Identity);
+                "bogdb-hnsw-bm25-hybrid", LexicalHashEmbedder.Identity);
         }
     }
 
@@ -275,24 +326,173 @@ public sealed class BogDbMemoryStore : IMemoryStore
     {
         if (!_connection.HasTable(Table))
         {
-            Execute(
+            QueryOrThrow(
                 "CREATE NODE TABLE Drawer(" +
                 "id STRING PRIMARY KEY, wing STRING, room STRING, content STRING, " +
                 "source_file STRING, added_by STRING, filed_at STRING, id_recipe STRING, " +
                 "origin STRING, embedding FLOAT[])");
-            return;
+        }
+        else
+        {
+            var originProbe = _connection.Query("MATCH (d:Drawer) RETURN d.origin LIMIT 0");
+            if (!originProbe.IsSuccess)
+                QueryOrThrow("ALTER TABLE Drawer ADD origin STRING DEFAULT 'legacy'", context: "schema migration");
         }
 
-        var originProbe = _connection.Query("MATCH (d:Drawer) RETURN d.origin LIMIT 0");
-        if (originProbe.IsSuccess) return;
-        var migration = _connection.Query("ALTER TABLE Drawer ADD origin STRING DEFAULT 'legacy'");
-        if (!migration.IsSuccess)
-            throw new InvalidOperationException($"BogDB schema migration failed: {migration.ErrorMessage}");
+        if (!_connection.HasTable(SearchTable))
+            QueryOrThrow(
+                "CREATE NODE TABLE DrawerSearch(" +
+                "id INT64 PRIMARY KEY, drawer_id STRING, content STRING)");
     }
 
     private void Upsert(MemoryDrawer drawer)
     {
-        _connection.Graph().AddNode(Table, drawer.Id, ToProperties(drawer)).Commit();
+        _connection.ExecuteWriteTransaction(() => UpsertCore(drawer));
+    }
+
+    private void UpsertCore(MemoryDrawer drawer)
+    {
+        _connection.UpsertNodeById(Table, drawer.Id, ToProperties(drawer));
+        UpsertSearchProjection(drawer);
+    }
+
+    private void UpsertSearchProjection(MemoryDrawer drawer)
+    {
+        var searchId = SearchId(drawer.Id);
+        _connection.UpsertNodeById(
+            SearchTable,
+            searchId.ToString(CultureInfo.InvariantCulture),
+            new Dictionary<string, object>
+            {
+                ["id"] = searchId,
+                ["drawer_id"] = drawer.Id,
+                ["content"] = drawer.Content,
+            });
+    }
+
+    private void DeleteSearchProjection(string drawerId) =>
+        QueryOrThrow(
+            "MATCH (s:DrawerSearch) WHERE s.drawer_id = $drawerId DELETE s",
+            new Dictionary<string, object?> { ["drawerId"] = drawerId });
+
+    private void ReconcileSearchProjection()
+    {
+        var drawers = ReadAll();
+        var collisions = drawers
+            .GroupBy(drawer => SearchId(drawer.Id))
+            .FirstOrDefault(group => group.Select(drawer => drawer.Id).Distinct(StringComparer.Ordinal).Skip(1).Any());
+        if (collisions is not null)
+            throw new InvalidOperationException(
+                $"Drawer FTS key collision between: {string.Join(", ", collisions.Select(drawer => drawer.Id))}");
+
+        var existing = ReadSearchProjection();
+        var wantedIds = drawers.Select(drawer => drawer.Id).ToHashSet(StringComparer.Ordinal);
+        var normalized = drawers
+            .Select(drawer => drawer.Embedding.Count == LexicalHashEmbedder.Dimensions
+                ? drawer
+                : drawer with { Embedding = _embedder.Embed(drawer.Content) })
+            .ToArray();
+
+        var needsWrite = existing.Keys.Any(id => !wantedIds.Contains(id));
+        for (var index = 0; index < normalized.Length && !needsWrite; index++)
+        {
+            var drawer = normalized[index];
+            needsWrite =
+                drawer.Embedding.Count != drawers[index].Embedding.Count ||
+                !existing.TryGetValue(drawer.Id, out var document) ||
+                !string.Equals(document.Content, drawer.Content, StringComparison.Ordinal) ||
+                document.SearchId != SearchId(drawer.Id);
+        }
+        if (!needsWrite) return;
+
+        _connection.ExecuteWriteTransaction(() =>
+        {
+            foreach (var orphan in existing.Keys.Where(id => !wantedIds.Contains(id)))
+                DeleteSearchProjection(orphan);
+            for (var index = 0; index < normalized.Length; index++)
+            {
+                var drawer = normalized[index];
+                if (drawers[index].Embedding.Count != LexicalHashEmbedder.Dimensions)
+                    _connection.UpsertNodeById(Table, drawer.Id, ToProperties(drawer));
+                UpsertSearchProjection(drawer);
+            }
+        });
+    }
+
+    private void EnsureRetrievalIndexes()
+    {
+        QueryOrThrow(
+            $"CALL create_vector_index('{Table}', '{VectorIndex}', 'embedding', 'cosine', skip_if_exists := true) RETURN *",
+            context: "vector index creation");
+
+        if (!_ftsExtension.Indexes.ContainsKey(FtsIndex))
+            QueryOrThrow(
+                $"CALL CREATE_FTS_INDEX('{SearchTable}', '{FtsIndex}', ['content'], k1 := 1.5, b := 0.75) RETURN *",
+                context: "FTS index creation");
+    }
+
+    private Dictionary<string, double> QueryVectorIndex(IReadOnlyList<float> embedding, int limit)
+    {
+        var result = QueryOrThrow(
+            $"CALL query_vector_index('{Table}', '{VectorIndex}', $embedding, $limit) RETURN *",
+            new Dictionary<string, object?>
+            {
+                ["embedding"] = embedding.ToArray(),
+                ["limit"] = limit,
+            },
+            "vector search");
+        var distances = new Dictionary<string, double>(StringComparer.Ordinal);
+        while (result.HasNext())
+        {
+            var row = result.GetNext();
+            var id = row.GetString(1);
+            if (!string.IsNullOrEmpty(id))
+                distances[id] = row.GetDouble(2);
+        }
+        return distances;
+    }
+
+    private Dictionary<string, double> QueryFtsIndex(string query, int limit)
+    {
+        var searchIds = ReadSearchProjection()
+            .ToDictionary(pair => pair.Value.SearchId, pair => pair.Key);
+        var result = QueryOrThrow(
+            $"CALL QUERY_FTS_INDEX('{FtsIndex}', $query, $limit) RETURN *",
+            new Dictionary<string, object?>
+            {
+                ["query"] = query,
+                ["limit"] = limit,
+            },
+            "full-text search");
+        var scores = new Dictionary<string, double>(StringComparer.Ordinal);
+        while (result.HasNext())
+        {
+            var row = result.GetNext();
+            if (searchIds.TryGetValue(row.GetInt64(0), out var drawerId))
+                scores[drawerId] = row.GetDouble(1);
+        }
+        return scores;
+    }
+
+    private Dictionary<string, SearchProjection> ReadSearchProjection()
+    {
+        var result = QueryOrThrow("MATCH (s:DrawerSearch) RETURN s.id, s.drawer_id, s.content");
+        var documents = new Dictionary<string, SearchProjection>(StringComparer.Ordinal);
+        while (result.HasNext())
+        {
+            var row = result.GetNext();
+            var drawerId = row.GetString(1);
+            if (!string.IsNullOrEmpty(drawerId))
+                documents[drawerId] = new SearchProjection(row.GetInt64(0), row.GetString(2) ?? "");
+        }
+        return documents;
+    }
+
+    private static long SearchId(string drawerId)
+    {
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(drawerId));
+        var value = BinaryPrimitives.ReadUInt64LittleEndian(digest) & long.MaxValue;
+        return value == 0 ? 1 : (long)value;
     }
 
     private static Dictionary<string, object> ToProperties(MemoryDrawer drawer) => new()
@@ -331,9 +531,7 @@ public sealed class BogDbMemoryStore : IMemoryStore
 
     private List<MemoryDrawer> Execute(string query, IReadOnlyDictionary<string, object?>? parameters = null)
     {
-        var result = _connection.Query(query, parameters);
-        if (!result.IsSuccess) throw new InvalidOperationException($"BogDB query failed: {result.ErrorMessage}");
-        if (!query.TrimStart().StartsWith("MATCH", StringComparison.OrdinalIgnoreCase)) return [];
+        var result = QueryOrThrow(query, parameters);
         return result.Select(row => new MemoryDrawer(
             row.GetString(0) ?? "",
             row.GetString(1) ?? "",
@@ -347,6 +545,18 @@ public sealed class BogDbMemoryStore : IMemoryStore
             ToFloatList(row.GetValue(9)))).ToList();
     }
 
+    private QueryResult QueryOrThrow(
+        string query,
+        IReadOnlyDictionary<string, object?>? parameters = null,
+        string? context = null)
+    {
+        var result = _connection.Query(query, parameters);
+        if (!result.IsSuccess)
+            throw new InvalidOperationException(
+                $"BogDB {context ?? "query"} failed: {result.ErrorMessage}");
+        return result;
+    }
+
     private const string Projection = "MATCH (d:Drawer)";
     private const string ReturnFields = "d.id, d.wing, d.room, d.content, d.source_file, d.added_by, d.filed_at, d.id_recipe, d.origin, d.embedding";
 
@@ -356,20 +566,6 @@ public sealed class BogDbMemoryStore : IMemoryStore
         return sequence.Cast<object?>().Select(Convert.ToSingle).ToArray();
     }
 
-    private static double CosineDistance(IReadOnlyList<float> left, IReadOnlyList<float> right)
-    {
-        double dot = 0, leftNorm = 0, rightNorm = 0;
-        var count = Math.Min(left.Count, right.Count);
-        for (var i = 0; i < count; i++)
-        {
-            dot += (double)left[i] * right[i];
-            leftNorm += (double)left[i] * left[i];
-            rightNorm += (double)right[i] * right[i];
-        }
-        if (leftNorm == 0 || rightNorm == 0) return leftNorm == rightNorm ? 0 : 1;
-        return 1 - Math.Clamp(dot / Math.Sqrt(leftNorm * rightNorm), -1, 1);
-    }
-
     private static string Required(string value, string parameterName, bool trim = true)
     {
         if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException($"{parameterName} is required", parameterName);
@@ -377,4 +573,6 @@ public sealed class BogDbMemoryStore : IMemoryStore
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
+
+    private sealed record SearchProjection(long SearchId, string Content);
 }

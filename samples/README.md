@@ -98,10 +98,10 @@ flow is:
 4. Call `mempalace_sync` without `apply` to inspect stale sources.
 5. Apply sync only with the intended `project_dir`.
 
-The current retrieval mode is exact hybrid lexical retrieval, not semantic
-search. Check `mempalace_status.retrieval_mode` instead of assuming a backend.
-`mempalace_mine` uses the same project configuration and returns its
-`files_by_room` distribution.
+The current retrieval mode is BogDB-maintained HNSW + BM25 hybrid lexical
+retrieval, not semantic search. Check `mempalace_status.retrieval_mode` instead
+of assuming a backend. `mempalace_mine` uses the same project configuration and
+returns its `files_by_room` distribution.
 
 ## 3. Embedded .NET API
 
