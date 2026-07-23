@@ -13,18 +13,26 @@
     "python": "3.9.6"
   },
   "dependency_versions": {
-    "chromadb": "1.5.9",
+    "chromadb": "unknown",
     "numpy": "2.0.2",
     "dateutil": "2.9.0.post0",
-    "autocorrect": "absent",
+    "autocorrect": "unknown",
     "yaml": "6.0.3",
-    "tokenizers": "0.22.2",
-    "huggingface_hub": "1.8.0",
+    "tokenizers": "absent",
+    "huggingface_hub": "absent",
     "mempalace": "3.5.0"
   },
   "inputs_source": "mirrors DateParsingParityTests cases + legacy tests/test_miner.py slash-lock corpus; expected values computed by miner._extract_content_date at the pin under TZ=UTC",
   "notes": "mtime case: harness must materialize a file with mtime_epoch_utc and interpret it in UTC. dateutil version recorded in dependency_versions \u2014 edge parses are version-sensitive.",
   "files": {
-    "dates.json": "3cefe10ce25af02825bc01c37dab71ceeb08acba1955a92a3d3aad026afe881a"
+    "vectors.jsonl": "3ff43c9b2b14d43b4be1657188209a2955498aade8da4863a59d290869dcb680"
+  },
+  "corpus_schema": "bogmem.golden.dates.v1",
+  "tier_enum": {
+    "filename": 1,
+    "frontmatter": 2,
+    "content_body": 3,
+    "mtime": 4,
+    "none": 5
   }
 }
