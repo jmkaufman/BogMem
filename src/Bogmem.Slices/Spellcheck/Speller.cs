@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.IO.Compression;
 using System.Reflection;
 using System.Text;
@@ -11,13 +12,14 @@ namespace Bogmem.Slices.Spellcheck;
 /// <summary>
 /// Port of spellcheck.py at LEGACY_COMMIT behind ISpeller, including the
 /// autocorrect library's Norvig-style corrector (word frequencies vendored
-/// from autocorrect's en dictionary, MIT-licensed, as an embedded gzip).
+/// from autocorrect's en dictionary, MIT-licensed, as an embedded gzip) and
+/// the FreeBSD-maintained web2 valid-word corpus.
 ///
 /// Token pipeline: split on non-whitespace runs, strip trailing punctuation,
 /// skip short/digit/camel/allcaps/technical/url/code tokens and known names,
-/// skip capitalized words and words already in the system dictionary
-/// (/usr/share/dict/words), autocorrect the rest, and reject corrections
-/// farther than the Levenshtein guard (2 edits ≤7 chars, else 3).
+/// skip capitalized words and words already in the embedded valid-word corpus,
+/// autocorrect the rest, and reject corrections farther than the Levenshtein
+/// guard (2 edits ≤7 chars, else 3).
 ///
 /// This slice is BOUNDED (D2): scored as per-token agreement ≥ 0.95 against
 /// the golden corpus, not exact equality.
@@ -37,20 +39,32 @@ public sealed partial class Speller : ISpeller
     [GeneratedRegex("[A-Za-z]+")] private static partial Regex WordRegex();
 
     private static Dictionary<string, long>? _sharedWordCounts;
+    private static readonly Lazy<FrozenSet<string>> SharedValidWords =
+        new(LoadEmbeddedValidWords, LazyThreadSafetyMode.ExecutionAndPublication);
 
     private readonly Dictionary<string, long> _wordCounts;
-    private readonly HashSet<string> _systemWords;
+    private readonly IReadOnlySet<string> _validWords;
     private readonly HashSet<string> _knownNames;
 
-    public Speller(IEnumerable<string>? knownNames = null, string systemDictPath = "/usr/share/dict/words",
+    /// <param name="systemDictPath">
+    /// Optional compatibility override for a newline-delimited valid-word file.
+    /// When omitted, the embedded web2 corpus is used on every platform.
+    /// </param>
+    public Speller(IEnumerable<string>? knownNames = null, string? systemDictPath = null,
         Dictionary<string, long>? wordCounts = null)
     {
         _knownNames = new HashSet<string>(knownNames ?? [], StringComparer.Ordinal);
-        _systemWords = LoadSystemWords(systemDictPath);
+        _validWords = systemDictPath is null
+            ? SharedValidWords.Value
+            : LoadWordsFile(systemDictPath);
         _wordCounts = wordCounts ?? LoadSharedWordCounts();
     }
 
-    public HashSet<string> SystemWords => _systemWords;
+    /// <summary>The deterministic valid-word shield used before autocorrection.</summary>
+    public IReadOnlySet<string> ValidWords => _validWords;
+
+    /// <summary>Compatibility alias for the legacy system-word terminology.</summary>
+    public IReadOnlySet<string> SystemWords => _validWords;
 
     /// <summary>ISpeller entry point — spellcheck_user_text with this instance's known names.</summary>
     public string Correct(string text) => SpellcheckUserText(text);
@@ -87,7 +101,7 @@ public sealed partial class Speller : ISpeller
 
         if (stripped.Length == 0 || ShouldSkip(stripped)) return token;
         if (char.IsUpper(stripped[0])) return token; // capitalized → likely proper noun
-        if (_systemWords.Contains(stripped.ToLowerInvariant())) return token;
+        if (_validWords.Contains(stripped.ToLowerInvariant())) return token;
 
         var corrected = AutocorrectSentence(stripped);
         if (!string.Equals(corrected, stripped, StringComparison.Ordinal))
@@ -204,16 +218,34 @@ public sealed partial class Speller : ISpeller
         return prev[rb.Length];
     }
 
-    private static HashSet<string> LoadSystemWords(string path)
+    private static FrozenSet<string> LoadWordsFile(string path)
+    {
+        if (!File.Exists(path))
+            return Array.Empty<string>().ToFrozenSet(StringComparer.Ordinal);
+
+        using var stream = File.OpenRead(path);
+        return ReadWords(stream);
+    }
+
+    private static FrozenSet<string> LoadEmbeddedValidWords()
+    {
+        using var stream = Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream("Bogmem.Slices.Spellcheck.data.web2.txt.gz")
+            ?? throw new InvalidOperationException("embedded web2.txt.gz missing");
+        using var gz = new GZipStream(stream, CompressionMode.Decompress);
+        return ReadWords(gz);
+    }
+
+    private static FrozenSet<string> ReadWords(Stream stream)
     {
         var words = new HashSet<string>(StringComparer.Ordinal);
-        if (!File.Exists(path)) return words;
-        foreach (var line in File.ReadLines(path))
+        using var reader = new StreamReader(stream);
+        while (reader.ReadLine() is { } line)
         {
             var w = PyText.PyStrip(line);
             if (w.Length > 0) words.Add(w.ToLowerInvariant());
         }
-        return words;
+        return words.ToFrozenSet(StringComparer.Ordinal);
     }
 
     private static Dictionary<string, long> LoadSharedWordCounts()

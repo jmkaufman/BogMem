@@ -34,6 +34,26 @@ internal static class TestSupport
         if (!value) throw new InvalidOperationException(message);
     }
 
+    public static void AssertEqual<T>(T expected, T actual, string message)
+    {
+        if (!EqualityComparer<T>.Default.Equals(expected, actual))
+            throw new InvalidOperationException($"{message}: expected '{expected}', got '{actual}'");
+    }
+
+    public static void AssertThrows<TException>(Action action, string message)
+        where TException : Exception
+    {
+        try
+        {
+            action();
+        }
+        catch (TException)
+        {
+            return;
+        }
+        throw new InvalidOperationException($"{message}: expected {typeof(TException).Name}");
+    }
+
     public static void WriteModuleLedger(string module, string slice, params (string TestId, string Status, string Rule, string? Reason)[] rows)
     {
         var ledger = new TestDispositionLedgerWriter();

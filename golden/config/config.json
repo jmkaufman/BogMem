@@ -1,0 +1,193 @@
+{
+  "schema": "bogmem.golden.config.v1",
+  "legacy_commit": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "cases": [
+    {
+      "name": "backend_default",
+      "file": null,
+      "env": {},
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "backend_file_only",
+      "file": {
+        "backend": "sqlite_exact"
+      },
+      "env": {},
+      "expected": {
+        "backend": "sqlite_exact",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "backend_env_only",
+      "file": null,
+      "env": {
+        "MEMPALACE_BACKEND": "sqlite_exact"
+      },
+      "expected": {
+        "backend": "sqlite_exact",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "backend_file_beats_env",
+      "file": {
+        "backend": "sqlite_exact"
+      },
+      "env": {
+        "MEMPALACE_BACKEND": "chroma"
+      },
+      "expected": {
+        "backend": "sqlite_exact",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "backend_env_case_normalized",
+      "file": null,
+      "env": {
+        "MEMPALACE_BACKEND": "SQLite_Exact"
+      },
+      "expected": {
+        "backend": "sqlite_exact",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "chunks_default",
+      "file": null,
+      "env": {},
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "chunks_file",
+      "file": {
+        "chunk_size": 600,
+        "chunk_overlap": 50,
+        "min_chunk_size": 40
+      },
+      "env": {},
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 600,
+        "chunk_overlap": 50,
+        "min_chunk_size": 40,
+        "min_chunk_size_explicit": true
+      }
+    },
+    {
+      "name": "chunks_file_invalid_repaired",
+      "file": {
+        "chunk_size": "nope",
+        "chunk_overlap": -5
+      },
+      "env": {},
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "chunks_env_ignored",
+      "file": {
+        "chunk_size": 600
+      },
+      "env": {
+        "MEMPALACE_CHUNK_SIZE": "999"
+      },
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 600,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "min_chunk_explicit_present",
+      "file": {
+        "min_chunk_size": 30
+      },
+      "env": {},
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 30,
+        "min_chunk_size_explicit": true
+      }
+    },
+    {
+      "name": "min_chunk_explicit_absent",
+      "file": {},
+      "env": {},
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false
+      }
+    },
+    {
+      "name": "palace_env_beats_file",
+      "file": {
+        "palace_path": "/file/palace"
+      },
+      "env": {
+        "MEMPALACE_PALACE_PATH": "/env/palace"
+      },
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false,
+        "palace_path": "/env/palace"
+      }
+    },
+    {
+      "name": "palace_file_only",
+      "file": {
+        "palace_path": "/file/palace"
+      },
+      "env": {},
+      "expected": {
+        "backend": "chroma",
+        "chunk_size": 800,
+        "chunk_overlap": 100,
+        "min_chunk_size": 50,
+        "min_chunk_size_explicit": false,
+        "palace_path": "/file/palace"
+      }
+    }
+  ]
+}

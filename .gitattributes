@@ -1,2 +1,0 @@
-# Golden oracle fixtures are byte-exact evidence; never eol-convert them.
-golden/** -text

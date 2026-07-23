@@ -55,6 +55,74 @@ public static class CliExitCodeTests
 
             Expect(failures, "--help -> 0", 0, Invoke(["--help"], TestKit.Root));
 
+            var productPalace = Path.Combine(scratch, "product-palace");
+            var init = InvokeCapture(["init", "--palace", productPalace], TestKit.Root);
+            Expect(failures, "product init -> 0", 0, init.Code);
+            var add = InvokeCapture([
+                "add", "--palace", productPalace,
+                "--wing", "bogmem", "--room", "backend",
+                "--content", "BogDB is the durable local memory backend."
+            ], TestKit.Root);
+            Expect(failures, "product add -> 0", 0, add.Code);
+            using (var addJson = JsonDocument.Parse(add.Stdout))
+                if (!addJson.RootElement.GetProperty("created").GetBoolean()) failures.Add("product add should create");
+
+            var status = InvokeCapture(["status", "--palace", productPalace], TestKit.Root);
+            Expect(failures, "product status -> 0", 0, status.Code);
+            using (var statusJson = JsonDocument.Parse(status.Stdout))
+            {
+                if (statusJson.RootElement.GetProperty("backend").GetString() != "bogdb") failures.Add("product status backend");
+                if (statusJson.RootElement.GetProperty("drawers").GetInt32() != 1) failures.Add("product status drawer count");
+            }
+
+            var search = InvokeCapture(["search", "durable BogDB memory", "--palace", productPalace], TestKit.Root);
+            Expect(failures, "product search -> 0", 0, search.Code);
+            using (var searchJson = JsonDocument.Parse(search.Stdout))
+                if (searchJson.RootElement.GetProperty("results").GetArrayLength() != 1) failures.Add("product search should retrieve drawer");
+
+            var mineSource = Path.Combine(scratch, "mine-source");
+            Directory.CreateDirectory(mineSource);
+            File.WriteAllText(Path.Combine(mineSource, "notes.md"),
+                string.Join("\n\n", Enumerable.Repeat("CLI mining stores project notes in BogDB.", 40)));
+            var dryMine = InvokeCapture([
+                "mine", mineSource, "--palace", productPalace, "--wing", "cli_project", "--dry-run"
+            ], TestKit.Root);
+            Expect(failures, "product mine dry-run -> 0", 0, dryMine.Code);
+            using (var dryMineJson = JsonDocument.Parse(dryMine.Stdout))
+                if (dryMineJson.RootElement.GetProperty("drawersWritten").GetInt32() != 0)
+                    failures.Add("product mine dry-run should not write");
+
+            var mine = InvokeCapture([
+                "mine", mineSource, "--palace", productPalace, "--wing", "cli_project"
+            ], TestKit.Root);
+            Expect(failures, "product mine -> 0", 0, mine.Code);
+            using (var mineJson = JsonDocument.Parse(mine.Stdout))
+                if (mineJson.RootElement.GetProperty("drawersWritten").GetInt32() == 0)
+                    failures.Add("product mine should write project drawers");
+
+            File.Delete(Path.Combine(mineSource, "notes.md"));
+            var syncPreview = InvokeCapture([
+                "sync", mineSource, "--palace", productPalace, "--wing", "cli_project"
+            ], TestKit.Root);
+            Expect(failures, "product sync preview -> 0", 0, syncPreview.Code);
+            using (var syncJson = JsonDocument.Parse(syncPreview.Stdout))
+            {
+                if (!syncJson.RootElement.GetProperty("dryRun").GetBoolean() ||
+                    syncJson.RootElement.GetProperty("missing").GetInt32() == 0 ||
+                    syncJson.RootElement.GetProperty("removedDrawers").GetInt32() != 0)
+                    failures.Add("product sync preview should report missing drawers without deleting");
+            }
+
+            Expect(failures, "product sync unscoped apply -> 2", 2,
+                Invoke(["sync", "--palace", productPalace, "--wing", "cli_project", "--apply"], TestKit.Root));
+            var syncApply = InvokeCapture([
+                "sync", mineSource, "--palace", productPalace, "--wing", "cli_project", "--apply"
+            ], TestKit.Root);
+            Expect(failures, "product sync apply -> 0", 0, syncApply.Code);
+            using (var syncJson = JsonDocument.Parse(syncApply.Stdout))
+                if (syncJson.RootElement.GetProperty("removedDrawers").GetInt32() == 0)
+                    failures.Add("product sync apply should remove missing project drawers");
+
             // The canonical full-corpus gate is one aggregate invocation. It must
             // run every leaf module and produce an aggregate report, rather than
             // being rejected as an unknown module before dispatch.
@@ -89,6 +157,16 @@ public static class CliExitCodeTests
     }
 
     private static int Invoke(string[] args, string cwd) => Invoke(args, cwd, out _);
+
+    private sealed record Invocation(int Code, string Stdout, string Stderr);
+
+    private static Invocation InvokeCapture(string[] args, string cwd)
+    {
+        using var outWriter = new StringWriter();
+        using var errWriter = new StringWriter();
+        var code = CliMain.Run(args, outWriter, errWriter, cwd);
+        return new(code, outWriter.ToString(), errWriter.ToString());
+    }
 
     private static int Invoke(string[] args, string cwd, out string stderr)
     {

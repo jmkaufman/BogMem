@@ -1,0 +1,131 @@
+name: Publish NuGet Package
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version, for example 0.1.0-preview.1"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-nuget-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  publish:
+    name: Pack and Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve package version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid SemVer package version: $version" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Publishing BogMem.Tool $version" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore and audit dependencies
+        run: >
+          dotnet restore Bogmem.sln
+          -p:NuGetAudit=true
+          -p:NuGetAuditMode=all
+          -p:WarningsAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904
+
+      - name: Build
+        run: >
+          dotnet build Bogmem.sln
+          --configuration Release
+          --no-restore
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:PackageVersion=${{ steps.version.outputs.version }}
+
+      - name: Test
+        run: dotnet test Bogmem.sln --configuration Release --no-build --no-restore --verbosity minimal
+
+      - name: Pack
+        shell: bash
+        run: |
+          mkdir -p artifacts/nuget
+          while IFS= read -r project || [[ -n "$project" ]]; do
+            [[ -z "$project" || "$project" =~ ^# ]] && continue
+            dotnet pack "$project" \
+              --configuration Release \
+              --no-build \
+              --no-restore \
+              --output artifacts/nuget \
+              -p:Version=${{ steps.version.outputs.version }} \
+              -p:PackageVersion=${{ steps.version.outputs.version }}
+          done < eng/package-projects.txt
+
+      - name: Smoke-test installed tool
+        shell: bash
+        run: |
+          package_version="${{ steps.version.outputs.version }}"
+          tool_path="$RUNNER_TEMP/bogmem-tool"
+          palace_path="$RUNNER_TEMP/bogmem-palace"
+
+          dotnet tool install BogMem.Tool \
+            --tool-path "$tool_path" \
+            --version "$package_version" \
+            --source artifacts/nuget
+
+          BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" init --palace "$palace_path"
+          BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" add \
+            --wing release --room smoke \
+            --content "BogMem package smoke test." \
+            --palace "$palace_path"
+          BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" search \
+            "package smoke" --wing release --palace "$palace_path"
+
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v7
+        with:
+          name: bogmem-nuget-package-${{ steps.version.outputs.version }}
+          path: artifacts/nuget/*.nupkg
+          compression-level: 0
+          retention-days: 30
+
+      - name: Publish to NuGet.org
+        shell: bash
+        run: |
+          if [[ -z "$NUGET_API_KEY" ]]; then
+            echo "Missing NUGET_API_KEY repository secret." >&2
+            exit 1
+          fi
+
+          dotnet nuget push artifacts/nuget/*.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY" \
+            --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

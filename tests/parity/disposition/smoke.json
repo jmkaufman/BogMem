@@ -34,6 +34,38 @@
       "slice": "S5c"
     },
     {
+      "test_id": "bogdb_memory_store",
+      "module": "BogDbMemoryStore",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "persistent CRUD \u002B native HNSW/BM25 hybrid retrieval",
+      "slice": "P1"
+    },
+    {
+      "test_id": "project_config",
+      "module": "ProjectConfig",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "YAML room routing with explicit overrides",
+      "slice": "P4"
+    },
+    {
+      "test_id": "project_miner",
+      "module": "ProjectMiner",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "git-aware idempotent project ingestion",
+      "slice": "P2"
+    },
+    {
+      "test_id": "project_sync",
+      "module": "ProjectSync",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "safe dry-run/apply project pruning",
+      "slice": "P3"
+    },
+    {
       "test_id": "ids",
       "module": "IdRecipes",
       "status": "pass",

@@ -1,0 +1,27 @@
+{
+  "schema": "bogmem.golden_deferred_ids.v1",
+  "pin": "a4747d7ffc7818684f01ac96c886ff6a654dd301",
+  "rows": [
+    {
+      "name": "qdrant_uuid5",
+      "backend": "qdrant",
+      "input": "drawer:/path/a1:0",
+      "id": "5f46e77b-c778-5a33-869b-2fb4e2da1748",
+      "notes": "RFC-4122-v5 uuid; deferred from S1 comparison"
+    },
+    {
+      "name": "milvus_id",
+      "backend": "milvus",
+      "input": "milvus:doc1",
+      "id": "80ecc671-3854-5594-92a5-71368b8b7581",
+      "notes": "surrogatepass hasher deferred; uuid5 oracle placeholder"
+    },
+    {
+      "name": "pgvector_id",
+      "backend": "pgvector",
+      "input": "pg:doc2",
+      "id": "5a6f87c0-b467-5cd2-85d5-0ffade3fcc6f",
+      "notes": "surrogatepass hasher deferred; uuid5 oracle placeholder"
+    }
+  ]
+}

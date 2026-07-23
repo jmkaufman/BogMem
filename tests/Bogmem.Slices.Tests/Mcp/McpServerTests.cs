@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bogmem.Harness;
 using Bogmem.Slices.Mcp;
+using Bogmem.Slices.Storage;
 
 namespace Bogmem.Slices.Tests.Mcp;
 
@@ -73,10 +74,84 @@ public static class McpServerTests
         TestSupport.AssertTrue(server.ToolList.Count == 36, "36 tools");
         TestSupport.AssertTrue(server.ToolList.Count(t => t.Mutating) == 14, "14 mutating");
 
+        ExercisePersistentTools();
+
         TestSupport.WriteModuleLedger("mcp", "S9",
             ("mcp_wire_golden", "pass", "EXACT", null),
             ("mcp_error_codes", "pass", "EXACT", "covered_by_golden+synthetic"),
             ("mcp_version_fallback", "pass", "EXACT", "covered_by_golden"));
+    }
+
+    private static void ExercisePersistentTools()
+    {
+        var path = Directory.CreateTempSubdirectory("bogmem-mcp-product-").FullName;
+        try
+        {
+            using var store = new BogDbMemoryStore(path);
+            var server = new McpServer(store);
+            var toolsResponse = server.HandleRequest(JsonNode.Parse(
+                """{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}""")!)!;
+            var productTools = toolsResponse["result"]!["tools"]!.AsArray();
+            TestSupport.AssertTrue(productTools.Count == 14, "functional MCP should advertise only implemented product tools");
+            TestSupport.AssertTrue(productTools.All(t => !t!["name"]!.GetValue<string>().StartsWith("mempalace_kg_", StringComparison.Ordinal)),
+                "functional MCP must not advertise parity-only KG stubs");
+            var add = ToolResult(server, "mempalace_add_drawer",
+                new JsonObject { ["wing"] = "project", ["room"] = "backend", ["content"] = "BogDB stores the durable memory records." });
+            TestSupport.AssertTrue(add["success"]!.GetValue<bool>(), "functional MCP add");
+            var status = ToolResult(server, "mempalace_status", new JsonObject());
+            TestSupport.AssertTrue(status["backend"]!.GetValue<string>() == "bogdb" && status["drawers"]!.GetValue<int>() == 1,
+                "functional MCP status");
+            var search = ToolResult(server, "mempalace_search", new JsonObject { ["query"] = "durable BogDB memory" });
+            TestSupport.AssertTrue(search["results"] is JsonArray { Count: 1 }, "functional MCP search");
+
+            var project = Directory.CreateTempSubdirectory("bogmem-mcp-mine-").FullName;
+            try
+            {
+                var notes = Path.Combine(project, "notes.md");
+                File.WriteAllText(notes,
+                    string.Join("\n\n", Enumerable.Repeat("MCP project mining stores verbatim durable notes.", 40)));
+                var mine = ToolResult(server, "mempalace_mine",
+                    new JsonObject { ["source"] = project, ["wing"] = "mcp_project" });
+                TestSupport.AssertTrue(mine["success"]!.GetValue<bool>() && mine["drawers_written"]!.GetValue<int>() > 0,
+                    "functional MCP mine should write project drawers");
+                File.Delete(notes);
+                var preview = ToolResult(server, "mempalace_sync",
+                    new JsonObject { ["project_dir"] = project, ["wing"] = "mcp_project" });
+                TestSupport.AssertTrue(preview["success"]!.GetValue<bool>() && preview["dry_run"]!.GetValue<bool>() &&
+                                       preview["missing"]!.GetValue<int>() > 0 && preview["removed_drawers"]!.GetValue<int>() == 0,
+                    "functional MCP sync should preview by default");
+                var unsafeApply = ToolResult(server, "mempalace_sync",
+                    new JsonObject { ["wing"] = "mcp_project", ["apply"] = true });
+                TestSupport.AssertTrue(!unsafeApply["success"]!.GetValue<bool>(), "functional MCP sync must reject unscoped apply");
+                var apply = ToolResult(server, "mempalace_sync",
+                    new JsonObject { ["project_dir"] = project, ["wing"] = "mcp_project", ["apply"] = true });
+                TestSupport.AssertTrue(apply["success"]!.GetValue<bool>() && apply["removed_drawers"]!.GetValue<int>() > 0,
+                    "functional MCP sync apply should remove missing project drawers");
+            }
+            finally
+            {
+                if (Directory.Exists(project)) Directory.Delete(project, recursive: true);
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private static JsonObject ToolResult(McpServer server, string name, JsonObject arguments)
+    {
+        var request = new JsonObject
+        {
+            ["jsonrpc"] = "2.0",
+            ["id"] = 1,
+            ["method"] = "tools/call",
+            ["params"] = new JsonObject { ["name"] = name, ["arguments"] = arguments },
+        };
+        var response = server.HandleRequest(request)!.AsObject();
+        if (response["error"] is not null) throw new InvalidOperationException(response["error"]!.ToJsonString());
+        var text = response["result"]!["content"]![0]!["text"]!.GetValue<string>();
+        return JsonNode.Parse(text)!.AsObject();
     }
 
     private static bool JsonEqual(JsonElement a, JsonElement b)

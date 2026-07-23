@@ -13,12 +13,18 @@ using Bogmem.Slices.Tests.Ids;
 using Bogmem.Slices.Tests.KnowledgeGraph;
 using Bogmem.Slices.Tests.Locking;
 using Bogmem.Slices.Tests.Mcp;
+using Bogmem.Slices.Tests.Mining;
 using Bogmem.Slices.Tests.Model;
 using Bogmem.Slices.Tests.Sanitizer;
 using Bogmem.Slices.Tests.Search;
 using Bogmem.Slices.Tests.Spellcheck;
 using Bogmem.Slices.Tests.Storage;
+using Bogmem.Slices.Tests.Sync;
 using Bogmem.Slices.Tests.Wal;
+
+// The product default exercises local MiniLM. The deterministic compatibility
+// suite opts into the dependency-free lexical fallback and never downloads a model.
+Environment.SetEnvironmentVariable("BOGMEM_EMBEDDING_MODEL", "lexical");
 
 var failures = new List<Exception>();
 
@@ -28,6 +34,10 @@ RunModule("config", ConfigResolverTests.Run);
 RunModule("embedder", EmbedderTests.Run);
 RunModule("chroma", ChromaStoreTests.Run);
 RunModule("knowledge_graph", KnowledgeGraphStoreTests.Run);
+RunModule("bogdb_memory_store", BogDbMemoryStoreTests.Run);
+RunModule("project_config", ProjectConfigTests.Run);
+RunModule("project_miner", ProjectMinerTests.Run);
+RunModule("project_sync", ProjectSyncTests.Run);
 RunModule("ids", IdRecipesTests.Run);
 RunModule("wal", WalWriterTests.Run);
 RunModule("search", SearcherTests.Run);
@@ -44,6 +54,10 @@ smoke.Append("config", "ConfigResolver", "pass", "EXACT", slice: "S8");
 smoke.Append("embedder", "Embedder", "pass", "ULP", slice: "S3");
 smoke.Append("chroma", "ChromaStore", "pass", "BOUNDED", slice: "S7");
 smoke.Append("knowledge_graph", "KnowledgeGraphStore", "pass", "EXACT", slice: "S5c");
+smoke.Append("bogdb_memory_store", "BogDbMemoryStore", "pass", "PRODUCT", "persistent CRUD + native HNSW/BM25 hybrid retrieval", "P1");
+smoke.Append("project_config", "ProjectConfig", "pass", "PRODUCT", "YAML room routing with explicit overrides", "P4");
+smoke.Append("project_miner", "ProjectMiner", "pass", "PRODUCT", "git-aware idempotent project ingestion", "P2");
+smoke.Append("project_sync", "ProjectSync", "pass", "PRODUCT", "safe dry-run/apply project pruning", "P3");
 smoke.Append("ids", "IdRecipes", "pass", "EXACT", slice: "S1");
 smoke.Append("wal", "WalWriter", "pass", "EXACT", slice: "S10");
 smoke.Append("search", "Searcher", "pass", "EXACT", slice: "S4");

@@ -4,9 +4,23 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>bogmem</ToolCommandName>
+    <PackageId>BogMem.Tool</PackageId>
+    <Title>BogMem .NET Tool</Title>
+    <Description>Local-first persistent project memory backed by BogDB.</Description>
+    <PackageTags>bogmem;memory;bogdb;mcp;dotnet-tool</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Bogmem.Harness/Bogmem.Harness.csproj" />
     <ProjectReference Include="../Bogmem.Slices/Bogmem.Slices.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" Link="README.md" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
+    <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" Link="THIRD-PARTY-NOTICES.md" />
+    <None Include="../Bogmem.Slices/Spellcheck/data/web2.NOTICE.md" Pack="true" PackagePath="/" Link="web2.NOTICE.md" />
   </ItemGroup>
 </Project>
