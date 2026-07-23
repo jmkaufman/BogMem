@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: publish-nuget-${{ github.ref }}
@@ -115,17 +116,16 @@ jobs:
           compression-level: 0
           retention-days: 30
 
+      - name: Authenticate to NuGet.org
+        id: nuget_login
+        uses: NuGet/login@v1
+        with:
+          user: bojake
+
       - name: Publish to NuGet.org
         shell: bash
-        run: |
-          if [[ -z "$NUGET_API_KEY" ]]; then
-            echo "Missing NUGET_API_KEY repository secret." >&2
-            exit 1
-          fi
-
-          dotnet nuget push artifacts/nuget/*.nupkg \
-            --source https://api.nuget.org/v3/index.json \
-            --api-key "$NUGET_API_KEY" \
-            --skip-duplicate
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: >
+          dotnet nuget push artifacts/nuget/*.nupkg
+          --source https://api.nuget.org/v3/index.json
+          --api-key "${{ steps.nuget_login.outputs.NUGET_API_KEY }}"
+          --skip-duplicate
