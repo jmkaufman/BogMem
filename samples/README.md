@@ -103,13 +103,41 @@ isolated MCP service. A practical agent flow is:
 Event workflows can call `bogmem_graph_observe`, then query a temporal window
 with `bogmem_graph_neighbors`, `bogmem_graph_traverse`, or
 `bogmem_graph_communities`. Include the `palace_id` returned by
-`bogmem_palace_status` when a router or Coliseum is selecting the destination.
+`bogmem_palace_status` when a router or Coliseum service is selecting the
+destination palace.
 
 The current retrieval mode combines local MiniLM semantic vectors in BogDB's
 maintained HNSW index with native BM25. Check both
 `mempalace_status.retrieval_mode` and `embedding_model` instead of assuming a
 backend or model. `mempalace_mine` uses the same project configuration and
 returns its `files_by_room` distribution.
+
+For a service-to-service client such as FTT, start the identical tool surface
+over Streamable HTTP:
+
+```bash
+export BOGMEM_MCP_TOKEN="replace-with-a-secret"
+bogmem mcp \
+  --palace /data/palaces/social-signals \
+  --transport http \
+  --listen http://127.0.0.1:7079
+```
+
+Each JSON-RPC message is a separate `POST http://127.0.0.1:7079/mcp` request:
+
+```bash
+curl http://127.0.0.1:7079/mcp \
+  -H "Authorization: Bearer $BOGMEM_MCP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-11-25" \
+  --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+Notifications receive `202 Accepted`; requests receive one JSON response.
+BogMem does not need an SSE channel or session ID. See
+[`docs/mcp-http.md`](../docs/mcp-http.md) for initialization and FTT lineage
+examples.
 
 ## 3. Embedded .NET API
 
@@ -163,11 +191,11 @@ replayed across windows.
 
 ## 5. Coliseum recall
 
-Register independently owned palaces, then recall across them without merging
-their storage:
+Register independently owned palaces in a Coliseum, then recall across them
+without merging their storage:
 
 ```bash
-bogmem registry register --palace /data/palaces/undertow
+bogmem registry register --palace /data/palaces/social-signals
 bogmem registry register --palace /data/palaces/artifacts
 bogmem recall "shared endpoint activity" --limit 20
 ```

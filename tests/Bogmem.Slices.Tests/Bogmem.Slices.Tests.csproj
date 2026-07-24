@@ -11,6 +11,9 @@
     <ProjectReference Include="../../src/Bogmem.Slices/Bogmem.Slices.csproj" />
     <ProjectReference Include="../../src/Bogmem.Cli/Bogmem.Cli.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
   <Target Name="RunConsoleSuite" DependsOnTargets="Build">
     <Message Text="Running Bogmem.Slices.Tests console suite via dotnet test" Importance="high" />
     <Exec Command="dotnet &quot;$(TargetPath)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)/../.." IgnoreStandardErrorWarningFormat="true" />

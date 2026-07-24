@@ -1,5 +1,9 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bogmem.Cli;
 using Bogmem.Graph;
 using Bogmem.Harness;
 using Bogmem.Slices.Mcp;
@@ -80,11 +84,169 @@ public static class McpServerTests
         ExercisePersistentTools();
         ExerciseRuntimeGraphTools();
         ExerciseColiseumTools();
+        ExerciseHttpTransport().GetAwaiter().GetResult();
 
         TestSupport.WriteModuleLedger("mcp", "S9",
             ("mcp_wire_golden", "pass", "EXACT", null),
             ("mcp_error_codes", "pass", "EXACT", "covered_by_golden+synthetic"),
-            ("mcp_version_fallback", "pass", "EXACT", "covered_by_golden"));
+            ("mcp_version_fallback", "pass", "EXACT", "covered_by_golden"),
+            ("mcp_streamable_http", "pass", "PRODUCT", "stateless JSON response mode"));
+    }
+
+    private static async Task ExerciseHttpTransport()
+    {
+        TestSupport.AssertThrows<ArgumentException>(
+            () => new McpHttpOptions("http://0.0.0.0:7079"),
+            "non-loopback MCP HTTP requires authentication");
+
+        const string token = "bogmem-http-test-token";
+        const string allowedOrigin = "https://ftt.example";
+        var options = new McpHttpOptions(
+            "http://127.0.0.1:0",
+            bearerToken: token,
+            allowedOrigins: [allowedOrigin]);
+        await using var host = McpHttpTransport.Create(new McpServer(), options);
+        await host.StartAsync();
+
+        using var client = new HttpClient
+        {
+            BaseAddress = new Uri(host.Addresses.Single()),
+        };
+
+        using (var unauthorized = await PostMcpAsync(
+                   client,
+                   """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"""))
+            TestSupport.AssertEqual(
+                HttpStatusCode.Unauthorized,
+                unauthorized.StatusCode,
+                "MCP HTTP bearer authentication");
+
+        using (var forbiddenOrigin = await PostMcpAsync(
+                   client,
+                   """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}""",
+                   token,
+                   "https://attacker.example"))
+            TestSupport.AssertEqual(
+                HttpStatusCode.Forbidden,
+                forbiddenOrigin.StatusCode,
+                "MCP HTTP origin validation");
+
+        using (var initialize = await PostMcpAsync(
+                   client,
+                   """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}""",
+                   token,
+                   allowedOrigin,
+                   "2025-11-25"))
+        {
+            TestSupport.AssertEqual(HttpStatusCode.OK, initialize.StatusCode, "MCP HTTP initialize status");
+            TestSupport.AssertEqual(
+                "application/json",
+                initialize.Content.Headers.ContentType?.MediaType,
+                "MCP HTTP JSON response");
+            TestSupport.AssertEqual(
+                allowedOrigin,
+                initialize.Headers.GetValues("Access-Control-Allow-Origin").Single(),
+                "MCP HTTP CORS origin");
+            var body = JsonNode.Parse(await initialize.Content.ReadAsStringAsync())!;
+            TestSupport.AssertEqual(
+                "mempalace",
+                body["result"]!["serverInfo"]!["name"]!.GetValue<string>(),
+                "MCP HTTP dispatcher reuse");
+        }
+
+        using (var notification = await PostMcpAsync(
+                   client,
+                   """{"jsonrpc":"2.0","method":"notifications/initialized"}""",
+                   token,
+                   protocolVersion: "2025-11-25"))
+        {
+            TestSupport.AssertEqual(
+                HttpStatusCode.Accepted,
+                notification.StatusCode,
+                "MCP HTTP notification status");
+            TestSupport.AssertEqual(
+                "",
+                await notification.Content.ReadAsStringAsync(),
+                "MCP HTTP notification body");
+        }
+
+        using (var clientResponse = await PostMcpAsync(
+                   client,
+                   """{"jsonrpc":"2.0","id":7,"result":{}}""",
+                   token,
+                   protocolVersion: "2025-11-25"))
+            TestSupport.AssertEqual(
+                HttpStatusCode.Accepted,
+                clientResponse.StatusCode,
+                "MCP HTTP client response status");
+
+        using (var badVersion = await PostMcpAsync(
+                   client,
+                   """{"jsonrpc":"2.0","id":2,"method":"ping"}""",
+                   token,
+                   protocolVersion: "2099-01-01"))
+            TestSupport.AssertEqual(
+                HttpStatusCode.BadRequest,
+                badVersion.StatusCode,
+                "MCP HTTP protocol version validation");
+
+        using (var badAccept = await PostMcpAsync(
+                   client,
+                   """{"jsonrpc":"2.0","id":2,"method":"ping"}""",
+                   token,
+                   includeEventStreamAccept: false))
+            TestSupport.AssertEqual(
+                HttpStatusCode.NotAcceptable,
+                badAccept.StatusCode,
+                "MCP HTTP Accept validation");
+
+        using (var get = new HttpRequestMessage(HttpMethod.Get, "mcp"))
+        {
+            get.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var getResponse = await client.SendAsync(get);
+            TestSupport.AssertEqual(
+                HttpStatusCode.MethodNotAllowed,
+                getResponse.StatusCode,
+                "MCP HTTP stateless GET");
+        }
+
+        using (var health = new HttpRequestMessage(HttpMethod.Get, "healthz"))
+        {
+            health.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var healthResponse = await client.SendAsync(health);
+            TestSupport.AssertEqual(HttpStatusCode.OK, healthResponse.StatusCode, "MCP HTTP health");
+            var body = JsonNode.Parse(await healthResponse.Content.ReadAsStringAsync())!;
+            TestSupport.AssertEqual(
+                "streamable-http",
+                body["transport"]!.GetValue<string>(),
+                "MCP HTTP health transport");
+        }
+
+        await host.StopAsync();
+    }
+
+    private static async Task<HttpResponseMessage> PostMcpAsync(
+        HttpClient client,
+        string json,
+        string? token = null,
+        string? origin = null,
+        string? protocolVersion = null,
+        bool includeEventStreamAccept = true)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "mcp")
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        if (includeEventStreamAccept)
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+        if (token is not null)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (origin is not null)
+            request.Headers.TryAddWithoutValidation("Origin", origin);
+        if (protocolVersion is not null)
+            request.Headers.TryAddWithoutValidation("MCP-Protocol-Version", protocolVersion);
+        return await client.SendAsync(request);
     }
 
     private static void ExerciseRuntimeGraphTools()
@@ -92,7 +254,7 @@ public static class McpServerTests
         var path = Directory.CreateTempSubdirectory("bogmem-mcp-runtime-").FullName;
         try
         {
-            using var runtime = PalaceRuntime.Open(path, "undertow", new LexicalHashEmbedder());
+            using var runtime = PalaceRuntime.Open(path, "social-signals", new LexicalHashEmbedder());
             var server = new McpServer(runtime);
             var toolsResponse = server.HandleRequest(JsonNode.Parse(
                 """{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}""")!)!;
@@ -122,7 +284,7 @@ public static class McpServerTests
                 ["weight"] = 2.0,
                 ["context"] = "shared-endpoint",
                 ["source"] = "ftt",
-                ["workflow_id"] = "undertow-ingest",
+                ["workflow_id"] = "social-signal-ingest",
                 ["run_id"] = "run-42",
                 ["artifact_id"] = "artifact-7",
                 ["signal_type"] = "co-activity",

@@ -9,20 +9,20 @@ public static class PalaceRuntimeTests
     public static void Run()
     {
         var root = TestKit.TempDir("palace-runtime");
-        var path = Path.Combine(root, "undertow-palace");
+        var path = Path.Combine(root, "social-signals-palace");
         var occurredAt = DateTimeOffset.Parse("2026-07-23T12:00:00Z");
         string palaceId;
         try
         {
             using (var runtime = PalaceRuntime.Open(
                        path,
-                       "undertow",
+                       "social-signals",
                        new LexicalHashEmbedder()))
             {
                 palaceId = runtime.Manifest.PalaceId;
                 TestSupport.AssertTrue(!string.IsNullOrWhiteSpace(palaceId), "stable palace ID");
-                TestSupport.AssertEqual("undertow", runtime.Manifest.Name, "palace name");
-                runtime.Memory.Add("undertow", "signals", "Coordinated activity signal.");
+                TestSupport.AssertEqual("social-signals", runtime.Manifest.Name, "palace name");
+                runtime.Memory.Add("social-signals", "signals", "Coordinated activity signal.");
                 runtime.Graph.Observe(new(
                     "signal:1",
                     occurredAt,
@@ -31,7 +31,7 @@ public static class PalaceRuntimeTests
                     "shared-endpoint",
                     new ObservationProvenance(
                         Source: "ftt",
-                        WorkflowId: "undertow-ingest",
+                        WorkflowId: "social-signal-ingest",
                         RunId: "run-42",
                         ArtifactId: "artifact-7",
                         SignalType: "co-activity")));
@@ -48,7 +48,7 @@ public static class PalaceRuntimeTests
             using (var reopened = PalaceRuntime.Open(path, embedder: new LexicalHashEmbedder()))
             {
                 TestSupport.AssertEqual(palaceId, reopened.Manifest.PalaceId, "manifest ID survives reopen");
-                TestSupport.AssertEqual("undertow", reopened.Manifest.Name, "manifest name survives reopen");
+                TestSupport.AssertEqual("social-signals", reopened.Manifest.Name, "manifest name survives reopen");
                 TestSupport.AssertEqual(1, reopened.Status().Drawers, "drawer survives runtime reopen");
                 TestSupport.AssertEqual(1, reopened.Status().Observations, "observation survives runtime reopen");
                 TestSupport.AssertTrue(
@@ -60,7 +60,7 @@ public static class PalaceRuntimeTests
                         "shared-endpoint",
                         new ObservationProvenance(
                             Source: "ftt",
-                            WorkflowId: "undertow-ingest",
+                            WorkflowId: "social-signal-ingest",
                             RunId: "run-42",
                             ArtifactId: "artifact-7",
                             SignalType: "co-activity"))),

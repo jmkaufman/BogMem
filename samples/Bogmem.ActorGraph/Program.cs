@@ -46,7 +46,7 @@ static void ObserveGroup(
         source,
         new ObservationProvenance(
             Source: "ftt",
-            WorkflowId: "undertow-signal-window",
+            WorkflowId: "social-signal-window",
             RunId: "demo-run",
             SignalType: source)));
 }

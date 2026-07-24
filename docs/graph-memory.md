@@ -63,7 +63,7 @@ replays. The result is Leiden-style and prevents disconnected communities, but
 community IDs and borderline assignments are not expected to match another
 implementation bit for bit.
 
-## Undertow-shaped use
+## Stream-processing use
 
 For an in-memory-per-window consumer:
 

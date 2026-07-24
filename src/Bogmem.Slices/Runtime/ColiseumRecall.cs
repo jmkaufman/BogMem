@@ -63,8 +63,8 @@ public sealed record ColiseumNeighborResult(
     IReadOnlyList<PalaceRecallFailure> Failures);
 
 /// <summary>
-/// Read-only federation over independently owned palace runtimes. Results are
-/// interleaved by local rank because scores produced by different embedding
+/// Read-only Coliseum recall over independently owned palace runtimes. Results
+/// are interleaved by local rank because scores produced by different embedding
 /// models or palace-local BM25 populations are not globally comparable.
 /// </summary>
 public sealed class ColiseumRecall

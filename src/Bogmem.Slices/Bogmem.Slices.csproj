@@ -17,7 +17,7 @@
     <EmbeddedResource Include="Spellcheck/data/web2.txt.gz" LogicalName="Bogmem.Slices.Spellcheck.data.web2.txt.gz" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="BogDB.Core" Version="1.3.2" />
+    <PackageReference Include="BogDB.Core" Version="1.4.0" />
     <PackageReference Include="BogDB.Extensions.FTS" Version="1.3.0" />
     <PackageReference Include="BogDB.Extensions.Vector" Version="1.3.0" />
     <PackageReference Include="ElBruno.LocalEmbeddings" Version="1.5.1" />

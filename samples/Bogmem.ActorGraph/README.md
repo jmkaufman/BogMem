@@ -1,6 +1,6 @@
 # Weighted actor graph
 
-This sample is the seam for event-processing systems such as Project Undertow.
+This sample is the seam for event-processing and social-signal systems.
 The upstream workflow decides what constitutes co-activity and emits stable,
 normalized observations. `BogMem.Graph` projects those events into a weighted
 account-to-account graph for a fixed window, supports neighborhood recall, and

@@ -1,6 +1,6 @@
-# Cross-palace recall
+# Coliseum cross-palace recall
 
-`ColiseumRecall` queries registered palaces without merging their databases or
+Coliseum recall queries registered palaces without merging their databases or
 creating cross-palace edges. Every hit carries the stable palace ID and name
 that supplied it.
 
@@ -8,7 +8,7 @@ that supplied it.
 
 ```bash
 bogmem recall "where was token rotation decided?" \
-  --registry /data/coliseum/registry.json \
+  --registry /data/bogmem/registry.json \
   --limit 20 \
   --per-palace-limit 5
 ```
@@ -18,8 +18,8 @@ names:
 
 ```bash
 bogmem recall "coordinated endpoint activity" \
-  --registry /data/coliseum/registry.json \
-  --palaces undertow,artifact-memory
+  --registry /data/bogmem/registry.json \
+  --palaces social-signals,artifact-memory
 ```
 
 The result contains:
@@ -37,7 +37,7 @@ Unknown explicit selectors are request errors rather than partial failures.
 
 ## Ranking
 
-Federated results use `local-rank-interleave-v1`. The first local hit from each
+Coliseum results use `local-rank-interleave-v1`. The first local hit from each
 palace is considered before second local hits, then third local hits, and so
 on. Local score breaks ties within a rank tier.
 
@@ -53,7 +53,7 @@ manufacturing a global relevance value.
 bogmem recall-neighbors account-42 \
   --window-start 2026-07-23T12:00:00Z \
   --window-end 2026-07-23T13:00:00Z \
-  --registry /data/coliseum/registry.json
+  --registry /data/bogmem/registry.json
 ```
 
 Each returned neighbor is a local palace edge with its own evidence count,
@@ -66,10 +66,19 @@ their weights or materialize a cross-palace relationship.
 Start a read-only registry-bound MCP process:
 
 ```bash
-bogmem mcp --registry /data/coliseum/registry.json
+bogmem mcp --registry /data/bogmem/registry.json
 ```
 
-It identifies itself as `bogmem-coliseum` and advertises only:
+The same read-only surface can be supervised as a Streamable HTTP service:
+
+```bash
+BOGMEM_MCP_TOKEN=replace-me bogmem mcp \
+  --registry /data/bogmem/registry.json \
+  --transport http \
+  --listen http://127.0.0.1:7080
+```
+
+The registry-bound service advertises only:
 
 - `bogmem_recall`
 - `bogmem_graph_recall_neighbors`
@@ -77,25 +86,6 @@ It identifies itself as `bogmem-coliseum` and advertises only:
 This service is distinct from `bogmem mcp --palace PATH`, which owns one palace
 and includes mutation tools unless started with `--read-only`. The Coliseum MCP
 surface is always read-only.
-
-## Embedded API
-
-```csharp
-using Bogmem.Slices.Runtime;
-
-var registry = new PalaceRegistry("/data/coliseum/registry.json");
-var coliseum = new ColiseumRecall(registry);
-
-var result = coliseum.Search(
-    "token rotation decision",
-    palaceSelectors: ["undertow", "artifact-memory"],
-    limit: 20,
-    perPalaceLimit: 5);
-
-foreach (var hit in result.Hits)
-    Console.WriteLine(
-        $"{hit.PalaceName} #{hit.LocalRank}: {hit.Drawer.Content}");
-```
 
 The current implementation opens registered palaces sequentially in-process.
 A process supervisor can later issue the same read-only requests concurrently

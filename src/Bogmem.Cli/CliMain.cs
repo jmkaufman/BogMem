@@ -45,6 +45,8 @@ public static class CliMain
                   get drawer-id [--palace path]
                   delete drawer-id [--palace path]
                   mcp [--palace path | --registry path] [--read-only]
+                      [--transport stdio|http] [--listen http://127.0.0.1:7079]
+                      [--endpoint /mcp] [--token value] [--allowed-origin origins]
                   registry register --palace path [--name palace-name] [--registry path]
                   registry list [--registry path]
                   registry resolve palace-id-or-name [--registry path]
@@ -322,22 +324,35 @@ public static class CliMain
             }
 
             case "mcp":
-                ValidateOptions(parsed, ["palace", "registry"], ["read-only"]);
+                ValidateOptions(
+                    parsed,
+                    [
+                        "palace", "registry", "transport", "listen", "endpoint",
+                        "token", "allowed-origin",
+                    ],
+                    ["read-only"]);
                 RequireNoPositionals(parsed);
+                var transport = ResolveMcpTransport(parsed);
                 if (parsed.Options.ContainsKey("registry"))
                 {
                     if (parsed.Options.ContainsKey("palace"))
                         throw new ArgumentException(
                             "mcp accepts either --palace or --registry, not both");
-                    return RunMcp(
+                    var server = new McpServer(
                         new PalaceRegistry(ResolveRegistryPath(
                             parsed.Options["registry"],
-                            workingDirectory)),
-                        stdin,
-                        stdout,
-                        stderr);
+                            workingDirectory)));
+                    return transport == "http"
+                        ? RunMcpHttp(server, ResolveMcpHttpOptions(parsed), stderr)
+                        : RunMcp(server, stdin, stdout, stderr);
                 }
-                return RunMcp(palace, parsed.Flags.Contains("read-only"), stdin, stdout, stderr);
+                return transport == "http"
+                    ? RunMcpHttp(
+                        palace,
+                        parsed.Flags.Contains("read-only"),
+                        ResolveMcpHttpOptions(parsed),
+                        stderr)
+                    : RunMcp(palace, parsed.Flags.Contains("read-only"), stdin, stdout, stderr);
 
             case "registry":
                 return RunRegistry(parsed, stdout, stderr, workingDirectory);
@@ -458,6 +473,85 @@ public static class CliMain
             stdout.Flush();
         }
         return 0;
+    }
+
+    private static int RunMcpHttp(
+        string palace,
+        bool readOnly,
+        McpHttpOptions options,
+        TextWriter stderr)
+    {
+        using var runtime = PalaceRuntime.Open(palace);
+        return RunMcpHttp(new McpServer(runtime) { ReadOnly = readOnly }, options, stderr);
+    }
+
+    private static int RunMcpHttp(
+        McpServer server,
+        McpHttpOptions options,
+        TextWriter stderr)
+    {
+        stderr.WriteLine(
+            $"BogMem MCP Streamable HTTP listening on " +
+            $"{options.ListenUri.GetLeftPart(UriPartial.Authority)}{options.Endpoint}");
+        stderr.WriteLine("Health: " +
+                         $"{options.ListenUri.GetLeftPart(UriPartial.Authority)}/healthz");
+        using var shutdown = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancel = (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            shutdown.Cancel();
+        };
+        Console.CancelKeyPress += cancel;
+        McpHttpHost? host = null;
+        try
+        {
+            host = McpHttpTransport.Create(server, options);
+            host.RunAsync(shutdown.Token).GetAwaiter().GetResult();
+            return 0;
+        }
+        catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+        {
+            return 0;
+        }
+        finally
+        {
+            if (host is not null)
+                host.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            Console.CancelKeyPress -= cancel;
+        }
+    }
+
+    private static string ResolveMcpTransport(ParsedArguments parsed)
+    {
+        var transport = (
+            parsed.Options.GetValueOrDefault("transport") ??
+            Environment.GetEnvironmentVariable("BOGMEM_MCP_TRANSPORT") ??
+            "stdio").Trim().ToLowerInvariant();
+        if (transport is not ("stdio" or "http"))
+            throw new ArgumentException("--transport must be stdio or http");
+        if (transport == "stdio" &&
+            parsed.Options.Keys.Any(key =>
+                key is "listen" or "endpoint" or "token" or "allowed-origin"))
+            throw new ArgumentException(
+                "--listen, --endpoint, --token, and --allowed-origin require --transport http");
+        return transport;
+    }
+
+    private static McpHttpOptions ResolveMcpHttpOptions(ParsedArguments parsed)
+    {
+        var allowedOrigins = (
+                parsed.Options.GetValueOrDefault("allowed-origin") ??
+                Environment.GetEnvironmentVariable("BOGMEM_MCP_ALLOWED_ORIGINS") ??
+                "")
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return new McpHttpOptions(
+            parsed.Options.GetValueOrDefault("listen") ??
+            Environment.GetEnvironmentVariable("BOGMEM_MCP_LISTEN"),
+            parsed.Options.GetValueOrDefault("endpoint") ??
+            Environment.GetEnvironmentVariable("BOGMEM_MCP_ENDPOINT"),
+            parsed.Options.GetValueOrDefault("token") ??
+            Environment.GetEnvironmentVariable("BOGMEM_MCP_TOKEN"),
+            allowedOrigins);
     }
 
     private sealed record ParsedArguments(

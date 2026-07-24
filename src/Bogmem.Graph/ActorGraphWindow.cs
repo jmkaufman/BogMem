@@ -6,9 +6,9 @@ namespace Bogmem.Graph;
 
 /// <summary>
 /// An idempotent, in-memory co-activity accumulator for one half-open time
-/// window. This is the low-latency surface for stream processors such as
-/// Undertow; the same observations can also be written to
-/// <see cref="BogDbActorGraphStore"/> for durable memory.
+/// window. This is the low-latency surface for stream processors; the same
+/// observations can also be written to <see cref="BogDbActorGraphStore"/> for
+/// durable memory.
 /// </summary>
 public sealed class ActorGraphWindow
 {

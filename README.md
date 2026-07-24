@@ -5,6 +5,9 @@ contains both the frozen compatibility corpus and two usable product paths:
 hybrid-searchable drawers and weighted temporal graph memory, both persisted
 in BogDB.
 
+See the [changelog](CHANGELOG.md) for release history and work planned for the
+next preview.
+
 ## Quick start
 
 BogMem runs `all-MiniLM-L6-v2` locally by default. The first command that needs
@@ -45,6 +48,23 @@ Run the persistent MCP server over newline-delimited JSON-RPC on stdio:
 ```bash
 dotnet run --project src/Bogmem.Cli -- mcp --palace ~/.bogmem/palace
 ```
+
+For FTT, services, and other independently managed processes, run the same MCP
+surface over stateless Streamable HTTP:
+
+```bash
+export BOGMEM_MCP_TOKEN="$(openssl rand -hex 32)"
+dotnet run --project src/Bogmem.Cli -- mcp \
+  --palace ~/.bogmem/palace \
+  --transport http \
+  --listen http://127.0.0.1:7079
+```
+
+The MCP endpoint is `POST /mcp` and liveness is `GET /healthz`. The server
+defaults to loopback, validates browser origins, and requires bearer
+authentication for non-loopback listeners. See
+[`docs/mcp-http.md`](docs/mcp-http.md) for the FTT request contract, security
+settings, and a copyable client exchange.
 
 Each live MCP process is bound to one persisted palace runtime. It exposes
 status, taxonomy/listing, project mining, search, duplicate checks, drawer CRUD,
@@ -107,7 +127,7 @@ is tested and documented; see
 
 ### Retrieval status
 
-The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.3.2 maintains a
+The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.4.0 maintains a
 cosine HNSW index and a full-text BM25 index across commits, deletes, and
 reopen. BogMem combines their scores with the MemPalace-compatible 0.6/0.4
 weighting. Vector candidates come from the same 384-dimensional
@@ -183,17 +203,19 @@ The runtime MCP surface adds:
 `bogmem_graph_observe` accepts optional FTT lineage (`source`, `workflow_id`,
 `run_id`, `artifact_id`, and `signal_type`) as part of its idempotency
 fingerprint. Supplying `palace_id` on graph calls acts as a routing guard. Each
-MCP process still serves exactly one palace.
+MCP process still serves exactly one palace. Stdio and Streamable HTTP share
+the same dispatcher and tool catalog.
 
 ### Palace registry
 
-The durable registry is the first Coliseum primitive. It maps a stable palace
-ID and unique name to an independent palace path:
+The durable registry is the first Coliseum primitive. A Coliseum is BogMem's
+multi-palace layer: it maps a stable palace ID and unique name to an independent
+palace path without merging the underlying stores:
 
 ```bash
-bogmem registry register --palace /data/palaces/undertow
+bogmem registry register --palace /data/palaces/social-signals
 bogmem registry list
-bogmem registry resolve undertow
+bogmem registry resolve social-signals
 ```
 
 Re-registering a moved palace repairs its path without changing its identity.
@@ -208,11 +230,10 @@ bogmem recall "where was token rotation decided?" --limit 20
 bogmem mcp --registry ~/.bogmem/registry.json
 ```
 
-Federated hits preserve palace provenance and local ranking metadata; missing
+Coliseum recall preserves palace provenance and local ranking metadata; missing
 palaces are reported as partial failures. Graph-neighbor recall is available
-through `recall-neighbors` and `bogmem_graph_recall_neighbors`. No
-cross-palace edges are created. Process supervision remains a later Coliseum
-layer. See
+through `recall-neighbors` and `bogmem_graph_recall_neighbors`. No cross-palace
+edges are created. Process supervision remains a later Coliseum layer. See
 [`docs/palace-registry.md`](docs/palace-registry.md) and
 [`docs/cross-palace-recall.md`](docs/cross-palace-recall.md).
 

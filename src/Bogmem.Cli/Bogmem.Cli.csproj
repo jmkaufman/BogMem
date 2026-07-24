@@ -18,6 +18,9 @@
     <ProjectReference Include="../Bogmem.Slices/Bogmem.Slices.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" Link="README.md" />
     <None Include="../../LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" Link="THIRD-PARTY-NOTICES.md" />

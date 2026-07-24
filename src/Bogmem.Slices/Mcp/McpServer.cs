@@ -12,7 +12,7 @@ namespace Bogmem.Slices.Mcp;
 /// <summary>
 /// JSON-RPC 2.0 MCP server wire. The frozen compatibility catalog has 36 tools
 /// (14 mutating); a product palace runtime adds canonical BogMem graph tools,
-/// while a registry-bound Coliseum exposes only read-only federated recall.
+/// while a registry-bound Coliseum exposes only read-only cross-palace recall.
 /// Preserves error codes -32002/-32003/-32000 and asymmetric protocol-version
 /// fallback (missing→oldest, unrecognized→newest).
 /// </summary>

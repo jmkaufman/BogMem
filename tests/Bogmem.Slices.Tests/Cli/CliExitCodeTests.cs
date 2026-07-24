@@ -23,6 +23,10 @@ public static class CliExitCodeTests
                 Invoke(["parity", "ids", "--golden"], TestKit.Root));
             Expect(failures, "unknown command -> 2", 2,
                 Invoke(["frobnicate"], TestKit.Root));
+            Expect(failures, "unknown MCP transport -> 2", 2,
+                Invoke(["mcp", "--transport", "websocket"], TestKit.Root));
+            Expect(failures, "HTTP-only MCP option on stdio -> 2", 2,
+                Invoke(["mcp", "--listen", "http://127.0.0.1:7079"], TestKit.Root));
             Expect(failures, "nonexistent --golden -> 2", 2,
                 Invoke(["parity", "ids", "--golden", Path.Combine(scratch, "does-not-exist")],
                     TestKit.Root, out var goldenErr));
