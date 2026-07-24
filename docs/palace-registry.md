@@ -56,13 +56,21 @@ be backed up, inspected, and rebuilt from palace manifests.
 
 ## Coliseum boundary
 
-The registry is the first Coliseum primitive. A later supervisor can use it to:
+The registry and `ColiseumRecall` now provide:
+
+1. Exact routing by palace ID or name.
+2. Read-only drawer and graph-neighbor recall across selected palaces.
+3. Partial-failure reporting and source-palace provenance.
+4. A registry-bound read-only MCP surface.
+
+A later process supervisor can:
 
 1. Start one MCP process per registered palace.
 2. Health-check and restart each process independently.
 3. Route one FTT observation envelope to one or more palace IDs.
-4. Aggregate read-only results while preserving the source palace ID.
+4. Query the processes concurrently behind the same recall contract.
 
 Cross-palace edges and a shared multi-palace BogDB remain out of scope. A
 registry entry identifies a routing destination; it does not weaken the
-one-runtime/one-palace isolation boundary.
+one-runtime/one-palace isolation boundary. See
+[`cross-palace-recall.md`](cross-palace-recall.md).

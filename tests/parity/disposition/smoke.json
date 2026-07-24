@@ -58,6 +58,14 @@
       "slice": "P7"
     },
     {
+      "test_id": "coliseum_recall",
+      "module": "ColiseumRecall",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "read-only federated drawer \u002B graph recall with palace provenance",
+      "slice": "P8"
+    },
+    {
       "test_id": "bogdb_memory_store",
       "module": "BogDbMemoryStore",
       "status": "pass",

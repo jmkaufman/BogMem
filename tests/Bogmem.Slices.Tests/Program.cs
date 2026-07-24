@@ -39,6 +39,7 @@ RunModule("knowledge_graph", KnowledgeGraphStoreTests.Run);
 RunModule("actor_graph", ActorGraphTests.Run);
 RunModule("palace_runtime", PalaceRuntimeTests.Run);
 RunModule("palace_registry", PalaceRegistryTests.Run);
+RunModule("coliseum_recall", ColiseumRecallTests.Run);
 RunModule("bogdb_memory_store", BogDbMemoryStoreTests.Run);
 RunModule("project_config", ProjectConfigTests.Run);
 RunModule("project_miner", ProjectMinerTests.Run);
@@ -62,6 +63,7 @@ smoke.Append("knowledge_graph", "KnowledgeGraphStore", "pass", "EXACT", slice: "
 smoke.Append("actor_graph", "ActorGraph", "pass", "PRODUCT", "weighted temporal windows + BogDB evidence + deterministic Leiden-style communities", "P5");
 smoke.Append("palace_runtime", "PalaceRuntime", "pass", "PRODUCT", "stable manifest + shared BogDB capability lifecycle", "P6");
 smoke.Append("palace_registry", "PalaceRegistry", "pass", "PRODUCT", "durable palace identity-to-path routing catalog", "P7");
+smoke.Append("coliseum_recall", "ColiseumRecall", "pass", "PRODUCT", "read-only federated drawer + graph recall with palace provenance", "P8");
 smoke.Append("bogdb_memory_store", "BogDbMemoryStore", "pass", "PRODUCT", "persistent CRUD + native HNSW/BM25 hybrid retrieval", "P1");
 smoke.Append("project_config", "ProjectConfig", "pass", "PRODUCT", "YAML room routing with explicit overrides", "P4");
 smoke.Append("project_miner", "ProjectMiner", "pass", "PRODUCT", "git-aware idempotent project ingestion", "P2");

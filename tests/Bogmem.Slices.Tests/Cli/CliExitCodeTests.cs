@@ -118,6 +118,45 @@ public static class CliExitCodeTests
                 if (resolveJson.RootElement.GetProperty("databasePath").GetString() != Path.GetFullPath(productPalace))
                     failures.Add("registry resolve path");
 
+            var secondPalace = Path.Combine(scratch, "second-palace");
+            var secondInit = InvokeCapture([
+                "init", "--palace", secondPalace, "--name", "cli-second-palace"
+            ], TestKit.Root);
+            Expect(failures, "second palace init -> 0", 0, secondInit.Code);
+            var secondAdd = InvokeCapture([
+                "add", "--palace", secondPalace,
+                "--wing", "bogmem", "--room", "backend",
+                "--content", "A second palace also retains durable BogDB memory."
+            ], TestKit.Root);
+            Expect(failures, "second palace add -> 0", 0, secondAdd.Code);
+            var secondRegister = InvokeCapture([
+                "registry", "register",
+                "--palace", secondPalace,
+                "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "second registry register -> 0", 0, secondRegister.Code);
+
+            var federatedRecall = InvokeCapture([
+                "recall", "durable BogDB memory",
+                "--registry", registryPath,
+                "--limit", "2",
+                "--per-palace-limit", "1",
+                "--max-distance", "2"
+            ], TestKit.Root);
+            Expect(failures, "federated recall -> 0", 0, federatedRecall.Code);
+            using (var recallJson = JsonDocument.Parse(federatedRecall.Stdout))
+            {
+                var hits = recallJson.RootElement.GetProperty("hits");
+                if (recallJson.RootElement.GetProperty("palacesSucceeded").GetInt32() != 2)
+                    failures.Add("federated recall palace count");
+                if (hits.GetArrayLength() != 2 ||
+                    hits.EnumerateArray()
+                        .Select(hit => hit.GetProperty("palaceId").GetString())
+                        .Distinct()
+                        .Count() != 2)
+                    failures.Add("federated recall should interleave sourced palace hits");
+            }
+
             var search = InvokeCapture(["search", "durable BogDB memory", "--palace", productPalace], TestKit.Root);
             Expect(failures, "product search -> 0", 0, search.Code);
             using (var searchJson = JsonDocument.Parse(search.Stdout))
@@ -188,6 +227,17 @@ public static class CliExitCodeTests
             foreach (var module in ParityRunner.KnownModules)
                 Expect(failures, $"parity {module} -> 0", 0,
                     Invoke(["parity", module, "--report", Path.Combine(scratch, $"pr_{module}.json")], TestKit.Root));
+
+            Directory.Delete(secondPalace, recursive: true);
+            var unavailableRecall = InvokeCapture([
+                "recall", "durable memory",
+                "--registry", registryPath,
+                "--palaces", "cli-second-palace"
+            ], TestKit.Root);
+            Expect(failures, "all selected recall palaces unavailable -> 1", 1, unavailableRecall.Code);
+            using (var unavailableJson = JsonDocument.Parse(unavailableRecall.Stdout))
+                if (unavailableJson.RootElement.GetProperty("failures").GetArrayLength() != 1)
+                    failures.Add("unavailable federated recall should return sourced failure");
 
             var unregister = InvokeCapture([
                 "registry", "unregister", initializedPalaceId, "--registry", registryPath

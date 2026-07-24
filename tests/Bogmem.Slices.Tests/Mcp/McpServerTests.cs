@@ -79,6 +79,7 @@ public static class McpServerTests
 
         ExercisePersistentTools();
         ExerciseRuntimeGraphTools();
+        ExerciseColiseumTools();
 
         TestSupport.WriteModuleLedger("mcp", "S9",
             ("mcp_wire_golden", "pass", "EXACT", null),
@@ -263,6 +264,83 @@ public static class McpServerTests
         finally
         {
             if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+    }
+
+    private static void ExerciseColiseumTools()
+    {
+        var root = Directory.CreateTempSubdirectory("bogmem-mcp-coliseum-").FullName;
+        var registry = new PalaceRegistry(Path.Combine(root, "registry.json"));
+        try
+        {
+            foreach (var palaceName in new[] { "alpha", "beta" })
+            {
+                using var runtime = PalaceRuntime.Open(
+                    Path.Combine(root, palaceName),
+                    palaceName,
+                    new LexicalHashEmbedder());
+                runtime.Memory.Add(
+                    "shared",
+                    "decisions",
+                    $"{palaceName} uses signed authentication envelopes.");
+                runtime.Graph.Observe(new(
+                    $"{palaceName}:signal:1",
+                    DateTimeOffset.Parse("2026-07-23T12:15:00Z"),
+                    ["account-root", $"account-{palaceName}"],
+                    Weight: palaceName == "alpha" ? 3 : 2));
+                registry.Register(runtime);
+            }
+
+            var server = new McpServer(registry);
+            var initialize = server.HandleRequest(JsonNode.Parse(
+                """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}""")!)!;
+            TestSupport.AssertEqual(
+                "bogmem-coliseum",
+                initialize["result"]!["serverInfo"]!["name"]!.GetValue<string>(),
+                "Coliseum MCP identity");
+
+            var toolsResponse = server.HandleRequest(JsonNode.Parse(
+                """{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}""")!)!;
+            var tools = toolsResponse["result"]!["tools"]!.AsArray();
+            TestSupport.AssertEqual(2, tools.Count, "Coliseum MCP tool count");
+            TestSupport.AssertTrue(
+                tools.All(tool =>
+                    !server.Tools[tool!["name"]!.GetValue<string>()].Mutating),
+                "Coliseum MCP is read-only");
+
+            var recall = ToolResult(server, "bogmem_recall", new JsonObject
+            {
+                ["query"] = "signed authentication envelope",
+                ["limit"] = 2,
+                ["max_distance"] = 2,
+            });
+            TestSupport.AssertEqual(2, recall["palaces_succeeded"]!.GetValue<int>(), "MCP federated recall");
+            TestSupport.AssertEqual(2, recall["results"]!.AsArray().Count, "MCP federated results");
+            TestSupport.AssertEqual(
+                2,
+                recall["results"]!.AsArray()
+                    .Select(hit => hit!["palace_id"]!.GetValue<string>())
+                    .Distinct()
+                    .Count(),
+                "MCP results preserve palace provenance");
+
+            var neighbors = ToolResult(
+                server,
+                "bogmem_graph_recall_neighbors",
+                new JsonObject
+                {
+                    ["actor_id"] = "account-root",
+                    ["window_start"] = "2026-07-23T12:00:00Z",
+                    ["window_end"] = "2026-07-23T13:00:00Z",
+                });
+            TestSupport.AssertEqual(
+                2,
+                neighbors["neighbors"]!.AsArray().Count,
+                "MCP federated graph recall");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
 

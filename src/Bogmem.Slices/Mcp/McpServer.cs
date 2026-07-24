@@ -11,7 +11,8 @@ namespace Bogmem.Slices.Mcp;
 
 /// <summary>
 /// JSON-RPC 2.0 MCP server wire. The frozen compatibility catalog has 36 tools
-/// (14 mutating); a product palace runtime adds canonical BogMem graph tools.
+/// (14 mutating); a product palace runtime adds canonical BogMem graph tools,
+/// while a registry-bound Coliseum exposes only read-only federated recall.
 /// Preserves error codes -32002/-32003/-32000 and asymmetric protocol-version
 /// fallback (missing→oldest, unrecognized→newest).
 /// </summary>
@@ -19,6 +20,7 @@ public sealed partial class McpServer
 {
     private readonly IMemoryStore? _memoryStore;
     private readonly PalaceRuntime? _runtime;
+    private readonly ColiseumRecall? _coliseum;
     public static readonly string[] SupportedProtocolVersions =
     [
         "2025-11-25",
@@ -77,6 +79,7 @@ public sealed partial class McpServer
     {
         _memoryStore = memoryStore;
         _runtime = null;
+        _coliseum = null;
         ToolList = LoadTools();
         Tools = ToolList.ToDictionary(t => t.Name, StringComparer.Ordinal);
     }
@@ -85,12 +88,29 @@ public sealed partial class McpServer
     {
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _memoryStore = runtime.Memory;
+        _coliseum = null;
         ServerVersion = typeof(PalaceRuntime).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion.Split('+', 2)[0]
             ?? typeof(PalaceRuntime).Assembly.GetName().Version?.ToString()
             ?? "unknown";
         ToolList = LoadTools().Concat(RuntimeToolSpecs()).ToArray();
+        Tools = ToolList.ToDictionary(t => t.Name, StringComparer.Ordinal);
+    }
+
+    public McpServer(PalaceRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        _runtime = null;
+        _memoryStore = null;
+        _coliseum = new ColiseumRecall(registry);
+        ReadOnly = true;
+        ServerVersion = typeof(ColiseumRecall).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion.Split('+', 2)[0]
+            ?? typeof(ColiseumRecall).Assembly.GetName().Version?.ToString()
+            ?? "unknown";
+        ToolList = ColiseumToolSpecs();
         Tools = ToolList.ToDictionary(t => t.Name, StringComparer.Ordinal);
     }
 
@@ -142,7 +162,11 @@ public sealed partial class McpServer
                     ["capabilities"] = new JsonObject { ["tools"] = new JsonObject() },
                     ["serverInfo"] = new JsonObject
                     {
-                        ["name"] = _runtime is null ? "mempalace" : "bogmem",
+                        ["name"] = _coliseum is not null
+                            ? "bogmem-coliseum"
+                            : _runtime is null
+                                ? "mempalace"
+                                : "bogmem",
                         ["version"] = ServerVersion,
                     },
                 },
@@ -351,6 +375,7 @@ public sealed partial class McpServer
 
     private JsonObject DispatchTool(string name, JsonObject args)
     {
+        if (_coliseum is not null) return DispatchColiseumTool(name, args);
         if (_memoryStore is null) return DispatchStub(name, args);
         return name switch
         {
@@ -694,7 +719,22 @@ public sealed partial class McpServer
         return value;
     }
 
-    private static double ArgDouble(JsonObject args, string name, double fallback) => args[name]?.GetValue<double>() ?? fallback;
+    private static double ArgDouble(
+        JsonObject args,
+        string name,
+        double fallback)
+    {
+        var node = args[name];
+        if (node is null) return fallback;
+        if (node.GetValueKind() != JsonValueKind.Number ||
+            !double.TryParse(
+                node.ToJsonString(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var value))
+            throw new ArgumentException($"'{name}' must be a number");
+        return value;
+    }
 
     private static JsonObject DispatchStub(string name, JsonObject args) => name switch
     {

@@ -35,11 +35,16 @@ public static class CliMain
                                  [--max-chunks-per-file n] [--dry-run] [--palace path]
                   sync [directory] [--wing name] [--apply] [--palace path]
                   search "query" [--wing name] [--room name] [--limit n] [--palace path]
+                  recall "query" [--registry path] [--palaces id-or-name,...]
+                                   [--wing name] [--room name] [--limit n]
+                                   [--per-palace-limit n]
+                  recall-neighbors actor-id --window-start time --window-end time
+                                   [--registry path] [--palaces id-or-name,...]
                   status [--palace path]
                   list [--wing name] [--room name] [--limit n] [--offset n] [--palace path]
                   get drawer-id [--palace path]
                   delete drawer-id [--palace path]
-                  mcp [--palace path] [--read-only]
+                  mcp [--palace path | --registry path] [--read-only]
                   registry register --palace path [--name palace-name] [--registry path]
                   registry list [--registry path]
                   registry resolve palace-id-or-name [--registry path]
@@ -229,6 +234,61 @@ public static class CliMain
                 return 0;
             }
 
+            case "recall":
+            {
+                ValidateOptions(
+                    parsed,
+                    [
+                        "registry", "palaces", "query", "wing", "room",
+                        "source-file", "limit", "per-palace-limit", "max-distance",
+                    ]);
+                var query = parsed.Positionals.Count == 1
+                    ? parsed.Positionals[0]
+                    : parsed.Positionals.Count == 0
+                        ? RequiredOption(parsed, "query")
+                        : throw new ArgumentException("recall accepts exactly one query");
+                var registry = new PalaceRegistry(ResolveRegistryPath(
+                    parsed.Options.GetValueOrDefault("registry"),
+                    workingDirectory));
+                var result = new ColiseumRecall(registry).Search(
+                    query,
+                    PalaceSelectors(parsed.Options.GetValueOrDefault("palaces")),
+                    IntOption(parsed, "limit", 10, 1, 1000),
+                    IntOption(parsed, "per-palace-limit", 5, 1, 100),
+                    parsed.Options.GetValueOrDefault("wing"),
+                    parsed.Options.GetValueOrDefault("room"),
+                    parsed.Options.GetValueOrDefault("source-file"),
+                    DoubleOption(parsed, "max-distance", 1.5));
+                WriteJson(stdout, result);
+                return result.PalacesRequested > 0 && result.PalacesSucceeded == 0 ? 1 : 0;
+            }
+
+            case "recall-neighbors":
+            {
+                ValidateOptions(
+                    parsed,
+                    [
+                        "registry", "palaces", "window-start", "window-end",
+                        "minimum-edge-weight", "limit", "per-palace-limit",
+                    ]);
+                var actorId = SinglePositional(
+                    parsed,
+                    "recall-neighbors requires exactly one actor ID");
+                var registry = new PalaceRegistry(ResolveRegistryPath(
+                    parsed.Options.GetValueOrDefault("registry"),
+                    workingDirectory));
+                var result = new ColiseumRecall(registry).Neighbors(
+                    actorId,
+                    TimestampOption(parsed, "window-start"),
+                    TimestampOption(parsed, "window-end"),
+                    PalaceSelectors(parsed.Options.GetValueOrDefault("palaces")),
+                    IntOption(parsed, "limit", 100, 1, 1000),
+                    IntOption(parsed, "per-palace-limit", 100, 1, 100),
+                    DoubleOption(parsed, "minimum-edge-weight", 0));
+                WriteJson(stdout, result);
+                return result.PalacesRequested > 0 && result.PalacesSucceeded == 0 ? 1 : 0;
+            }
+
             case "list":
                 ValidateOptions(parsed, ["palace", "wing", "room", "limit", "offset"]);
                 RequireNoPositionals(parsed);
@@ -262,8 +322,21 @@ public static class CliMain
             }
 
             case "mcp":
-                ValidateOptions(parsed, ["palace"], ["read-only"]);
+                ValidateOptions(parsed, ["palace", "registry"], ["read-only"]);
                 RequireNoPositionals(parsed);
+                if (parsed.Options.ContainsKey("registry"))
+                {
+                    if (parsed.Options.ContainsKey("palace"))
+                        throw new ArgumentException(
+                            "mcp accepts either --palace or --registry, not both");
+                    return RunMcp(
+                        new PalaceRegistry(ResolveRegistryPath(
+                            parsed.Options["registry"],
+                            workingDirectory)),
+                        stdin,
+                        stdout,
+                        stderr);
+                }
                 return RunMcp(palace, parsed.Flags.Contains("read-only"), stdin, stdout, stderr);
 
             case "registry":
@@ -347,6 +420,22 @@ public static class CliMain
     {
         using var runtime = PalaceRuntime.Open(palace);
         var server = new McpServer(runtime) { ReadOnly = readOnly };
+        return RunMcp(server, stdin, stdout, stderr);
+    }
+
+    private static int RunMcp(
+        PalaceRegistry registry,
+        TextReader stdin,
+        TextWriter stdout,
+        TextWriter stderr) =>
+        RunMcp(new McpServer(registry), stdin, stdout, stderr);
+
+    private static int RunMcp(
+        McpServer server,
+        TextReader stdin,
+        TextWriter stdout,
+        TextWriter stderr)
+    {
         string? line;
         while ((line = stdin.ReadLine()) is not null)
         {
@@ -439,6 +528,31 @@ public static class CliMain
         if (!double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value))
             throw new ArgumentException($"--{name} must be a number");
         return value;
+    }
+
+    private static DateTimeOffset TimestampOption(
+        ParsedArguments parsed,
+        string name)
+    {
+        var raw = RequiredOption(parsed, name);
+        if (!DateTimeOffset.TryParse(
+                raw,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal |
+                System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var value))
+            throw new ArgumentException($"--{name} must be an ISO-8601 timestamp");
+        return value;
+    }
+
+    private static IReadOnlyList<string>? PalaceSelectors(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var selectors = raw
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (selectors.Length == 0)
+            throw new ArgumentException("--palaces must contain at least one palace ID or name");
+        return selectors;
     }
 
     private static long LongOption(ParsedArguments parsed, string name, long fallback, long min, long max)

@@ -80,13 +80,16 @@ BogMem now provides the first layer outside the palace runtime:
 2. Routed opens verify that the manifest at that path still owns the expected
    palace ID.
 
-The remaining Coliseum supervisor can:
+`ColiseumRecall` uses that catalog to aggregate read-only drawer and
+graph-neighbor results with palace provenance. Its registry-bound MCP service
+is always read-only. The remaining Coliseum supervisor can:
 
 1. Start, stop, and health-check each palace independently.
 2. Route an FTT observation envelope to one or more palace IDs.
-3. Aggregate read-only results while preserving palace provenance.
+3. Execute the existing federated recall contract concurrently against
+   long-lived palace processes.
 
 BogMem should not introduce cross-palace edges inside an individual database.
 Federation belongs to the Coliseum because it must retain which palace supplied
 each result. See [`palace-registry.md`](palace-registry.md) for the registry
-contract and CLI.
+contract and [`cross-palace-recall.md`](cross-palace-recall.md) for federation.

@@ -1,6 +1,6 @@
 # Integrating BogMem
 
-BogMem has four integration surfaces. Pick the smallest one that fits your
+BogMem has five integration surfaces. Pick the smallest one that fits your
 application; the persistent surfaces use BogDB and the fixed-window graph can
 run entirely in memory.
 
@@ -160,3 +160,20 @@ replay-safe observations; `BogMem.Graph` aggregates weighted actor pairs,
 serves neighborhoods, and detects communities. Use `ActorGraphWindow` for an
 in-memory analysis window or `BogDbActorGraphStore` when observations must be
 replayed across windows.
+
+## 5. Coliseum recall
+
+Register independently owned palaces, then recall across them without merging
+their storage:
+
+```bash
+bogmem registry register --palace /data/palaces/undertow
+bogmem registry register --palace /data/palaces/artifacts
+bogmem recall "shared endpoint activity" --limit 20
+```
+
+Use `bogmem mcp --registry ~/.bogmem/registry.json` when an MCP client needs the
+read-only `bogmem_recall` and `bogmem_graph_recall_neighbors` tools. Results
+retain palace IDs and local ranks. The complete ranking and partial-failure
+contract is in
+[`docs/cross-palace-recall.md`](../docs/cross-palace-recall.md).

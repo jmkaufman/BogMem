@@ -198,10 +198,23 @@ bogmem registry resolve undertow
 
 Re-registering a moved palace repairs its path without changing its identity.
 Programmatic `OpenPalace` routing verifies the manifest ID before returning a
-runtime, preventing a stale path from serving the wrong memory. Process
-supervision and federated recall remain a later Coliseum layer. See
+runtime, preventing a stale path from serving the wrong memory.
+
+Read-only cross-palace recall is available through the CLI or a registry-bound
+MCP service:
+
+```bash
+bogmem recall "where was token rotation decided?" --limit 20
+bogmem mcp --registry ~/.bogmem/registry.json
+```
+
+Federated hits preserve palace provenance and local ranking metadata; missing
+palaces are reported as partial failures. Graph-neighbor recall is available
+through `recall-neighbors` and `bogmem_graph_recall_neighbors`. No
+cross-palace edges are created. Process supervision remains a later Coliseum
+layer. See
 [`docs/palace-registry.md`](docs/palace-registry.md) and
-[`docs/palace-runtime.md`](docs/palace-runtime.md).
+[`docs/cross-palace-recall.md`](docs/cross-palace-recall.md).
 
 ## Compatibility suite
 
