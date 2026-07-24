@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace Bogmem.Graph;
 
@@ -95,6 +96,7 @@ public sealed class ActorGraphWindow
             Id = id,
             ActorIds = actorIds,
             Context = observation.Context?.Trim(),
+            Provenance = Normalize(observation.Provenance),
         };
         var fingerprint = Fingerprint(normalized);
         lock (_gate)
@@ -156,6 +158,8 @@ public sealed class ActorGraphWindow
             observation.Weight.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
             observation.Context ?? "",
             string.Join("\0", observation.ActorIds));
+        if (observation.Provenance is not null)
+            payload += "\n" + JsonSerializer.Serialize(observation.Provenance);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
     }
 
@@ -169,6 +173,23 @@ public sealed class ActorGraphWindow
     private static bool IsPlaceholder(Actor actor) =>
         string.Equals(actor.Kind, "actor", StringComparison.Ordinal) &&
         actor.DisplayName is null;
+
+    internal static ObservationProvenance? Normalize(ObservationProvenance? provenance)
+    {
+        if (provenance is null) return null;
+        var normalized = provenance with
+        {
+            Source = Optional(provenance.Source),
+            WorkflowId = Optional(provenance.WorkflowId),
+            RunId = Optional(provenance.RunId),
+            ArtifactId = Optional(provenance.ArtifactId),
+            SignalType = Optional(provenance.SignalType),
+        };
+        return normalized == new ObservationProvenance() ? null : normalized;
+    }
+
+    private static string? Optional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     internal static string Required(string value, string parameterName) =>
         string.IsNullOrWhiteSpace(value)

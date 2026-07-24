@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bogmem.Slices.Mcp;
 using Bogmem.Slices.Mining;
+using Bogmem.Slices.Runtime;
 using Bogmem.Slices.Storage;
 using Bogmem.Slices.Sync;
 
@@ -28,7 +29,7 @@ public static class CliMain
                 bogmem - local-first persistent memory
 
                 Commands:
-                  init [--palace path]
+                  init [--palace path] [--name palace-name]
                   add --wing name --room name --content text [--source-file path] [--palace path]
                   mine directory [--wing name] [--room name] [--agent name] [--limit n]
                                  [--max-chunks-per-file n] [--dry-run] [--palace path]
@@ -131,22 +132,26 @@ public static class CliMain
         switch (args[0])
         {
             case "init":
-                ValidateOptions(parsed, ["palace"]);
+                ValidateOptions(parsed, ["palace", "name"]);
                 RequireNoPositionals(parsed);
-                using (var store = new BogDbMemoryStore(palace)) WriteJson(stdout, store.Status());
+                using (var runtime = PalaceRuntime.Open(
+                           palace,
+                           parsed.Options.GetValueOrDefault("name")))
+                    WriteJson(stdout, runtime.Status());
                 return 0;
 
             case "status":
                 ValidateOptions(parsed, ["palace"]);
                 RequireNoPositionals(parsed);
-                using (var store = new BogDbMemoryStore(palace)) WriteJson(stdout, store.Status());
+                using (var runtime = PalaceRuntime.Open(palace))
+                    WriteJson(stdout, runtime.Status());
                 return 0;
 
             case "add":
                 ValidateOptions(parsed, ["palace", "wing", "room", "content", "source-file", "added-by"]);
                 RequireNoPositionals(parsed);
-                using (var store = new BogDbMemoryStore(palace))
-                    WriteJson(stdout, store.Add(
+                using (var runtime = PalaceRuntime.Open(palace))
+                    WriteJson(stdout, runtime.Memory.Add(
                         RequiredOption(parsed, "wing"),
                         RequiredOption(parsed, "room"),
                         RequiredOption(parsed, "content", trim: false),
@@ -161,8 +166,8 @@ public static class CliMain
                     ["palace", "wing", "room", "agent", "limit", "max-chunks-per-file"],
                     ["dry-run"]);
                 var source = Path.GetFullPath(SinglePositional(parsed, "mine requires a source directory"), workingDirectory);
-                using var store = new BogDbMemoryStore(palace);
-                var miner = new ProjectMiner(store);
+                using var runtime = PalaceRuntime.Open(palace);
+                var miner = new ProjectMiner(runtime.Memory);
                 var maxChunks = parsed.Options.ContainsKey("max-chunks-per-file")
                     ? LongOption(parsed, "max-chunks-per-file", 0, 0, long.MaxValue)
                     : (long?)null;
@@ -185,8 +190,8 @@ public static class CliMain
                 var projectDirectory = parsed.Positionals.Count == 0
                     ? null
                     : Path.GetFullPath(parsed.Positionals[0], workingDirectory);
-                using var store = new BogDbMemoryStore(palace);
-                WriteJson(stdout, new ProjectSync(store).Run(new ProjectSyncRequest(
+                using var runtime = PalaceRuntime.Open(palace);
+                WriteJson(stdout, new ProjectSync(runtime.Memory).Run(new ProjectSyncRequest(
                     projectDirectory,
                     parsed.Options.GetValueOrDefault("wing"),
                     parsed.Flags.Contains("apply"))));
@@ -201,7 +206,8 @@ public static class CliMain
                     : parsed.Positionals.Count == 0
                         ? RequiredOption(parsed, "query")
                         : throw new ArgumentException("search accepts exactly one query");
-                using var store = new BogDbMemoryStore(palace);
+                using var runtime = PalaceRuntime.Open(palace);
+                var store = runtime.Memory;
                 WriteJson(stdout, new
                 {
                     query,
@@ -220,8 +226,8 @@ public static class CliMain
             case "list":
                 ValidateOptions(parsed, ["palace", "wing", "room", "limit", "offset"]);
                 RequireNoPositionals(parsed);
-                using (var store = new BogDbMemoryStore(palace))
-                    WriteJson(stdout, store.List(
+                using (var runtime = PalaceRuntime.Open(palace))
+                    WriteJson(stdout, runtime.Memory.List(
                         parsed.Options.GetValueOrDefault("wing"),
                         parsed.Options.GetValueOrDefault("room"),
                         IntOption(parsed, "limit", 20, 1, 100),
@@ -232,8 +238,8 @@ public static class CliMain
             {
                 ValidateOptions(parsed, ["palace"]);
                 var id = SinglePositional(parsed, "get requires a drawer ID");
-                using var store = new BogDbMemoryStore(palace);
-                var drawer = store.Get(id);
+                using var runtime = PalaceRuntime.Open(palace);
+                var drawer = runtime.Memory.Get(id);
                 if (drawer is null) { stderr.WriteLine($"Drawer not found: {id}"); return 1; }
                 WriteJson(stdout, drawer);
                 return 0;
@@ -243,8 +249,8 @@ public static class CliMain
             {
                 ValidateOptions(parsed, ["palace"]);
                 var id = SinglePositional(parsed, "delete requires a drawer ID");
-                using var store = new BogDbMemoryStore(palace);
-                var deleted = store.Delete(id);
+                using var runtime = PalaceRuntime.Open(palace);
+                var deleted = runtime.Memory.Delete(id);
                 WriteJson(stdout, new { drawerId = id, deleted });
                 return deleted ? 0 : 1;
             }
@@ -262,8 +268,8 @@ public static class CliMain
 
     private static int RunMcp(string palace, bool readOnly, TextReader stdin, TextWriter stdout, TextWriter stderr)
     {
-        using var store = new BogDbMemoryStore(palace);
-        var server = new McpServer(store) { ReadOnly = readOnly };
+        using var runtime = PalaceRuntime.Open(palace);
+        var server = new McpServer(runtime) { ReadOnly = readOnly };
         string? line;
         while ((line = stdin.ReadLine()) is not null)
         {

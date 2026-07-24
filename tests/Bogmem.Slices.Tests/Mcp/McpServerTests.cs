@@ -1,7 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bogmem.Graph;
 using Bogmem.Harness;
 using Bogmem.Slices.Mcp;
+using Bogmem.Slices.Embedding;
+using Bogmem.Slices.Runtime;
 using Bogmem.Slices.Storage;
 
 namespace Bogmem.Slices.Tests.Mcp;
@@ -75,11 +78,135 @@ public static class McpServerTests
         TestSupport.AssertTrue(server.ToolList.Count(t => t.Mutating) == 14, "14 mutating");
 
         ExercisePersistentTools();
+        ExerciseRuntimeGraphTools();
 
         TestSupport.WriteModuleLedger("mcp", "S9",
             ("mcp_wire_golden", "pass", "EXACT", null),
             ("mcp_error_codes", "pass", "EXACT", "covered_by_golden+synthetic"),
             ("mcp_version_fallback", "pass", "EXACT", "covered_by_golden"));
+    }
+
+    private static void ExerciseRuntimeGraphTools()
+    {
+        var path = Directory.CreateTempSubdirectory("bogmem-mcp-runtime-").FullName;
+        try
+        {
+            using var runtime = PalaceRuntime.Open(path, "undertow", new LexicalHashEmbedder());
+            var server = new McpServer(runtime);
+            var toolsResponse = server.HandleRequest(JsonNode.Parse(
+                """{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}""")!)!;
+            var tools = toolsResponse["result"]!["tools"]!.AsArray();
+            TestSupport.AssertEqual(19, tools.Count, "runtime MCP product tool count");
+            TestSupport.AssertTrue(
+                tools.Any(tool => tool!["name"]!.GetValue<string>() == "bogmem_graph_observe"),
+                "runtime MCP advertises graph observation");
+
+            var initialize = server.HandleRequest(JsonNode.Parse(
+                """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}""")!)!;
+            TestSupport.AssertEqual(
+                "bogmem",
+                initialize["result"]!["serverInfo"]!["name"]!.GetValue<string>(),
+                "runtime MCP server identity");
+            TestSupport.AssertTrue(
+                initialize["result"]!["serverInfo"]!["version"]!.GetValue<string>() != "3.5.0",
+                "runtime MCP reports BogMem rather than MemPalace version");
+
+            var occurredAt = "2026-07-23T12:05:00Z";
+            var observeArgs = new JsonObject
+            {
+                ["palace_id"] = runtime.Manifest.PalaceId,
+                ["observation_id"] = "mcp-signal-1",
+                ["occurred_at"] = occurredAt,
+                ["actor_ids"] = new JsonArray("account-a", "account-b", "account-c"),
+                ["weight"] = 2.0,
+                ["context"] = "shared-endpoint",
+                ["source"] = "ftt",
+                ["workflow_id"] = "undertow-ingest",
+                ["run_id"] = "run-42",
+                ["artifact_id"] = "artifact-7",
+                ["signal_type"] = "co-activity",
+            };
+            var observed = ToolResult(server, "bogmem_graph_observe", observeArgs);
+            TestSupport.AssertEqual("created", observed["reason"]!.GetValue<string>(), "MCP graph observation");
+            var replayed = ToolResult(
+                server,
+                "bogmem_graph_observe",
+                observeArgs.DeepClone().AsObject());
+            TestSupport.AssertEqual("already_exists", replayed["reason"]!.GetValue<string>(), "MCP graph replay");
+
+            var neighbors = ToolResult(server, "bogmem_graph_neighbors", new JsonObject
+            {
+                ["palace_id"] = runtime.Manifest.PalaceId,
+                ["actor_id"] = "account-a",
+                ["window_start"] = "2026-07-23T12:00:00Z",
+                ["window_end"] = "2026-07-23T13:00:00Z",
+            });
+            TestSupport.AssertEqual(2, neighbors["neighbors"]!.AsArray().Count, "MCP graph neighbors");
+            TestSupport.AssertEqual(
+                runtime.Manifest.PalaceId,
+                neighbors["palace_id"]!.GetValue<string>(),
+                "MCP result palace provenance");
+
+            var communities = ToolResult(server, "bogmem_graph_communities", new JsonObject
+            {
+                ["window_start"] = "2026-07-23T12:00:00Z",
+                ["window_end"] = "2026-07-23T13:00:00Z",
+            });
+            TestSupport.AssertEqual(
+                LeidenCommunityDetector.AlgorithmId,
+                communities["algorithm"]!.GetValue<string>(),
+                "MCP community algorithm identity");
+            TestSupport.AssertEqual(1, communities["communities"]!.AsArray().Count, "MCP community count");
+
+            var mismatch = server.HandleRequest(new JsonObject
+            {
+                ["jsonrpc"] = "2.0",
+                ["id"] = 9,
+                ["method"] = "tools/call",
+                ["params"] = new JsonObject
+                {
+                    ["name"] = "bogmem_graph_neighbors",
+                    ["arguments"] = new JsonObject
+                    {
+                        ["palace_id"] = "another-palace",
+                        ["actor_id"] = "account-a",
+                        ["window_start"] = "2026-07-23T12:00:00Z",
+                        ["window_end"] = "2026-07-23T13:00:00Z",
+                    },
+                },
+            })!;
+            TestSupport.AssertEqual(
+                -32602,
+                mismatch["error"]!["code"]!.GetValue<int>(),
+                "palace routing mismatch rejected");
+
+            var readOnly = new McpServer(runtime) { ReadOnly = true };
+            var readOnlyTools = readOnly.HandleRequest(JsonNode.Parse(
+                """{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}""")!)!;
+            TestSupport.AssertTrue(
+                readOnlyTools["result"]!["tools"]!.AsArray()
+                    .All(tool => tool!["name"]!.GetValue<string>() != "bogmem_graph_observe"),
+                "read-only runtime hides graph mutation");
+            var denied = readOnly.HandleRequest(new JsonObject
+            {
+                ["jsonrpc"] = "2.0",
+                ["id"] = 10,
+                ["method"] = "tools/call",
+                ["params"] = new JsonObject
+                {
+                    ["name"] = "bogmem_graph_observe",
+                    ["arguments"] = new JsonObject(),
+                },
+            })!;
+            TestSupport.AssertEqual(
+                McpServer.ErrorReadOnly,
+                denied["error"]!["code"]!.GetValue<int>(),
+                "read-only runtime rejects graph mutation");
+        }
+        finally
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
     }
 
     private static void ExercisePersistentTools()
@@ -160,26 +287,26 @@ public static class McpServerTests
         switch (a.ValueKind)
         {
             case JsonValueKind.Object:
-            {
-                var ap = a.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal).ToList();
-                var bp = b.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal).ToList();
-                if (ap.Count != bp.Count) return false;
-                for (var i = 0; i < ap.Count; i++)
                 {
-                    if (ap[i].Name != bp[i].Name) return false;
-                    if (!JsonEqual(ap[i].Value, bp[i].Value)) return false;
+                    var ap = a.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal).ToList();
+                    var bp = b.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal).ToList();
+                    if (ap.Count != bp.Count) return false;
+                    for (var i = 0; i < ap.Count; i++)
+                    {
+                        if (ap[i].Name != bp[i].Name) return false;
+                        if (!JsonEqual(ap[i].Value, bp[i].Value)) return false;
+                    }
+                    return true;
                 }
-                return true;
-            }
             case JsonValueKind.Array:
-            {
-                var aa = a.EnumerateArray().ToList();
-                var bb = b.EnumerateArray().ToList();
-                if (aa.Count != bb.Count) return false;
-                for (var i = 0; i < aa.Count; i++)
-                    if (!JsonEqual(aa[i], bb[i])) return false;
-                return true;
-            }
+                {
+                    var aa = a.EnumerateArray().ToList();
+                    var bb = b.EnumerateArray().ToList();
+                    if (aa.Count != bb.Count) return false;
+                    for (var i = 0; i < aa.Count; i++)
+                        if (!JsonEqual(aa[i], bb[i])) return false;
+                    return true;
+                }
             case JsonValueKind.String:
                 return a.GetString() == b.GetString();
             case JsonValueKind.Number:

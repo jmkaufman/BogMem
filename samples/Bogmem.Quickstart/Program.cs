@@ -1,5 +1,5 @@
 using Bogmem.Slices.Mining;
-using Bogmem.Slices.Storage;
+using Bogmem.Slices.Runtime;
 using Bogmem.Slices.Sync;
 
 var demoRoot = Directory.CreateTempSubdirectory("bogmem-quickstart-").FullName;
@@ -16,7 +16,9 @@ File.WriteAllText(retiredPlan, LongNote(
 
 try
 {
-    using var store = new BogDbMemoryStore(palace);
+    using var runtime = PalaceRuntime.Open(palace, "quickstart");
+    var store = runtime.Memory;
+    Console.WriteLine($"Palace: {runtime.Manifest.Name} ({runtime.Manifest.PalaceId})");
 
     Console.WriteLine("1. Mine project documents");
     var mine = new ProjectMiner(store).Mine(new ProjectMineRequest(

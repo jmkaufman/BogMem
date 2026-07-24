@@ -6,6 +6,14 @@ public sealed record Actor(
     string Kind = "actor",
     string? DisplayName = null);
 
+/// <summary>Source lineage carried with a normalized observation.</summary>
+public sealed record ObservationProvenance(
+    string? Source = null,
+    string? WorkflowId = null,
+    string? RunId = null,
+    string? ArtifactId = null,
+    string? SignalType = null);
+
 /// <summary>
 /// One sourced co-activity event. A single event may involve any number of
 /// actors; a graph window projects every distinct actor pair into a weighted
@@ -16,7 +24,8 @@ public sealed record CoActivityObservation(
     DateTimeOffset OccurredAt,
     IReadOnlyList<string> ActorIds,
     double Weight = 1,
-    string? Context = null);
+    string? Context = null,
+    ObservationProvenance? Provenance = null);
 
 /// <summary>An undirected edge aggregated from one or more observations.</summary>
 public sealed record WeightedActorEdge(
@@ -40,6 +49,12 @@ public sealed record ActorReach(
     Actor Actor,
     int Hops,
     double PathStrength);
+
+public sealed record ActorGraphStoreStatus(
+    string Backend,
+    string DatabasePath,
+    int Actors,
+    int Observations);
 
 /// <summary>An immutable weighted graph for a half-open time window.</summary>
 public sealed class ActorGraphSnapshot

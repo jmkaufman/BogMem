@@ -38,5 +38,15 @@ static void ObserveGroup(
     DateTimeOffset occurredAt)
 {
     var id = $"{source}:{occurredAt.ToUnixTimeMilliseconds()}";
-    window.Observe(new(id, occurredAt, actorIds, weight, source));
+    window.Observe(new(
+        id,
+        occurredAt,
+        actorIds,
+        weight,
+        source,
+        new ObservationProvenance(
+            Source: "ftt",
+            WorkflowId: "undertow-signal-window",
+            RunId: "demo-run",
+            SignalType: source)));
 }

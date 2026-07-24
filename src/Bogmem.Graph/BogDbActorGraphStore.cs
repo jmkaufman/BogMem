@@ -1,4 +1,5 @@
 using BogDb.Core.Main;
+using System.Text.Json;
 using BogQueryResult = BogDb.Core.Main.QueryResult.QueryResult;
 
 namespace Bogmem.Graph;
@@ -18,6 +19,7 @@ public sealed class BogDbActorGraphStore : IDisposable
     private readonly BogDatabase _database;
     private readonly BogConnection _connection;
     private readonly int _maxActorsPerObservation;
+    private readonly bool _ownsDatabase;
     private bool _disposed;
 
     /// <summary>Creates or opens a persistent BogDB graph.</summary>
@@ -30,6 +32,7 @@ public sealed class BogDbActorGraphStore : IDisposable
         DatabasePath = Path.GetFullPath(databasePath);
         _maxActorsPerObservation = ValidateActorLimit(maxActorsPerObservation);
         _database = BogDatabase.Open(DatabasePath);
+        _ownsDatabase = true;
         _connection = new BogConnection(_database);
         EnsureSchema();
     }
@@ -39,6 +42,24 @@ public sealed class BogDbActorGraphStore : IDisposable
         DatabasePath = ":memory:";
         _maxActorsPerObservation = ValidateActorLimit(maxActorsPerObservation);
         _database = BogDatabase.CreateInMemory();
+        _ownsDatabase = true;
+        _connection = new BogConnection(_database);
+        EnsureSchema();
+    }
+
+    /// <summary>
+    /// Attaches graph memory to a database owned by a wider palace runtime.
+    /// Disposing this store closes only its connection.
+    /// </summary>
+    public BogDbActorGraphStore(
+        BogDatabase database,
+        string databasePath,
+        int maxActorsPerObservation = ActorGraphWindow.DefaultMaxActorsPerObservation)
+    {
+        _database = database ?? throw new ArgumentNullException(nameof(database));
+        DatabasePath = string.IsNullOrWhiteSpace(databasePath) ? ":shared:" : databasePath;
+        _maxActorsPerObservation = ValidateActorLimit(maxActorsPerObservation);
+        _ownsDatabase = false;
         _connection = new BogConnection(_database);
         EnsureSchema();
     }
@@ -116,20 +137,19 @@ public sealed class BogDbActorGraphStore : IDisposable
                         ["occurred_at"] = normalized.OccurredAt.ToUniversalTime().ToUnixTimeMilliseconds(),
                         ["weight"] = normalized.Weight,
                         ["context"] = normalized.Context ?? "",
+                        ["provenance"] = normalized.Provenance is null
+                            ? ""
+                            : JsonSerializer.Serialize(normalized.Provenance),
                         ["fingerprint"] = fingerprint,
                     });
 
                 foreach (var actorId in normalized.ActorIds)
                 {
-                    QueryOrThrow(
-                        $"MATCH (a:{ActorTable}),(o:{ObservationTable}) " +
-                        "WHERE a.id = $actorId AND o.id = $observationId " +
-                        $"MERGE (a)-[:{ParticipationTable}]->(o)",
-                        new Dictionary<string, object?>
-                        {
-                            ["actorId"] = actorId,
-                            ["observationId"] = normalized.Id,
-                        });
+                    _connection.UpsertRelationshipById(
+                        ParticipationTable,
+                        actorId,
+                        normalized.Id,
+                        []);
                 }
             });
             return true;
@@ -181,13 +201,26 @@ public sealed class BogDbActorGraphStore : IDisposable
         }
     }
 
+    public ActorGraphStoreStatus Status()
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            return new(
+                "bogdb",
+                DatabasePath,
+                Count($"MATCH (a:{ActorTable}) RETURN count(a)"),
+                Count($"MATCH (o:{ObservationTable}) RETURN count(o)"));
+        }
+    }
+
     public void Dispose()
     {
         lock (_gate)
         {
             if (_disposed) return;
             _connection.Dispose();
-            _database.Dispose();
+            if (_ownsDatabase) _database.Dispose();
             _disposed = true;
         }
     }
@@ -201,7 +234,16 @@ public sealed class BogDbActorGraphStore : IDisposable
         if (!_connection.HasTable(ObservationTable))
             QueryOrThrow(
                 $"CREATE NODE TABLE {ObservationTable}(" +
-                "id STRING PRIMARY KEY, occurred_at INT64, weight DOUBLE, context STRING, fingerprint STRING)");
+                "id STRING PRIMARY KEY, occurred_at INT64, weight DOUBLE, context STRING, " +
+                "provenance STRING, fingerprint STRING)");
+        else
+        {
+            var provenanceProbe = _connection.Query(
+                $"MATCH (o:{ObservationTable}) RETURN o.provenance LIMIT 0");
+            if (!provenanceProbe.IsSuccess)
+                QueryOrThrow(
+                    $"ALTER TABLE {ObservationTable} ADD provenance STRING DEFAULT ''");
+        }
         if (!_connection.HasTable(ParticipationTable))
             QueryOrThrow(
                 $"CREATE REL TABLE {ParticipationTable}(" +
@@ -254,6 +296,14 @@ public sealed class BogDbActorGraphStore : IDisposable
         return rows.ToArray();
     }
 
+    private int Count(string query)
+    {
+        var result = QueryOrThrow(query);
+        return result.HasNext()
+            ? (int)Math.Min(result.GetNext().GetInt64(0), int.MaxValue)
+            : 0;
+    }
+
     private BogQueryResult QueryOrThrow(
         string query,
         IReadOnlyDictionary<string, object?>? parameters = null)
@@ -290,6 +340,7 @@ public sealed class BogDbActorGraphStore : IDisposable
             Id = id,
             ActorIds = actorIds,
             Context = observation.Context?.Trim(),
+            Provenance = ActorGraphWindow.Normalize(observation.Provenance),
         };
     }
 

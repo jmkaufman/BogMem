@@ -16,6 +16,7 @@ The producer owns domain interpretation:
 - What activity makes actors related.
 - How event weight is calculated.
 - Which source, workflow, or detector provides the stable observation ID.
+- Which FTT workflow, run, artifact, and signal type produced the observation.
 - Which interval forms an analysis window.
 
 BogMem owns graph memory:
@@ -38,8 +39,9 @@ Actor --PARTICIPATED_IN--> Observation <--PARTICIPATED_IN-- Actor
 An observation involving `n` distinct actors contributes its weight to each of
 the `n(n-1)/2` actor pairs. Replaying the same normalized observation ID is a
 no-op. Reusing its ID with different actors, time, weight, or context is an
-error. The default maximum is 1,024 actors per observation and can be changed
-explicitly when constructing the window or store.
+error. Optional provenance is normalized into the idempotency fingerprint. The
+default maximum is 1,024 actors per observation and can be changed explicitly
+when constructing the window or store.
 
 The persistent representation keeps event evidence instead of overwriting one
 aggregate relationship. Consequently a caller can request different time

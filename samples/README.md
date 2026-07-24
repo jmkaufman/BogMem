@@ -89,8 +89,9 @@ During development, point an MCP host at the checkout using absolute paths:
 ```
 
 The server uses newline-delimited JSON-RPC over stdio. Its advertised tools are
-only the product operations that are actually implemented. A practical agent
-flow is:
+only the product operations that are actually implemented. The process owns one
+palace runtime; start another process with a different `--palace` path for an
+isolated MCP service. A practical agent flow is:
 
 1. Call `mempalace_mine` once for a project.
 2. Call `mempalace_search` before guessing about prior decisions or code.
@@ -98,6 +99,11 @@ flow is:
    not write.
 4. Call `mempalace_sync` without `apply` to inspect stale sources.
 5. Apply sync only with the intended `project_dir`.
+
+Event workflows can call `bogmem_graph_observe`, then query a temporal window
+with `bogmem_graph_neighbors`, `bogmem_graph_traverse`, or
+`bogmem_graph_communities`. Include the `palace_id` returned by
+`bogmem_palace_status` when a router or Coliseum is selecting the destination.
 
 The current retrieval mode combines local MiniLM semantic vectors in BogDB's
 maintained HNSW index with native BM25. Check both
@@ -122,19 +128,19 @@ The essential embedded setup is:
 
 ```csharp
 using Bogmem.Slices.Mining;
-using Bogmem.Slices.Storage;
+using Bogmem.Slices.Runtime;
 
-using var store = new BogDbMemoryStore("/path/to/palace");
-new ProjectMiner(store).Mine(new ProjectMineRequest(
+using var palace = PalaceRuntime.Open("/path/to/palace", "my-project");
+new ProjectMiner(palace.Memory).Mine(new ProjectMineRequest(
     "/path/to/project",
     Wing: "my_project"));
 
-var hits = store.Search("authentication decision", wing: "my_project");
+var hits = palace.Memory.Search("authentication decision", wing: "my_project");
 ```
 
-Keep one long-lived store per process. Dispose it during shutdown. Coordinate
-different processes through the CLI/MCP workflow so the palace write lock can
-prevent mine/sync overlap.
+Keep one long-lived runtime per palace service and dispose it during shutdown.
+Coordinate different processes through the CLI/MCP workflow so the palace
+database lock can prevent competing owners.
 
 The default constructor resolves local MiniLM and downloads its model on first
 embedding. Tests or constrained offline deployments can inject an

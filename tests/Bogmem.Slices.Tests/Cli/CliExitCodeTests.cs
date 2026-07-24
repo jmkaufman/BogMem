@@ -56,8 +56,18 @@ public static class CliExitCodeTests
             Expect(failures, "--help -> 0", 0, Invoke(["--help"], TestKit.Root));
 
             var productPalace = Path.Combine(scratch, "product-palace");
-            var init = InvokeCapture(["init", "--palace", productPalace], TestKit.Root);
+            var init = InvokeCapture(
+                ["init", "--palace", productPalace, "--name", "cli-test-palace"],
+                TestKit.Root);
             Expect(failures, "product init -> 0", 0, init.Code);
+            string initializedPalaceId;
+            using (var initJson = JsonDocument.Parse(init.Stdout))
+            {
+                initializedPalaceId = initJson.RootElement.GetProperty("palaceId").GetString() ?? "";
+                if (string.IsNullOrWhiteSpace(initializedPalaceId)) failures.Add("product init palace ID");
+                if (initJson.RootElement.GetProperty("palaceName").GetString() != "cli-test-palace")
+                    failures.Add("product init palace name");
+            }
             var add = InvokeCapture([
                 "add", "--palace", productPalace,
                 "--wing", "bogmem", "--room", "backend",
@@ -73,6 +83,8 @@ public static class CliExitCodeTests
             {
                 if (statusJson.RootElement.GetProperty("backend").GetString() != "bogdb") failures.Add("product status backend");
                 if (statusJson.RootElement.GetProperty("drawers").GetInt32() != 1) failures.Add("product status drawer count");
+                if (statusJson.RootElement.GetProperty("palaceId").GetString() != initializedPalaceId)
+                    failures.Add("product status stable palace ID");
             }
 
             var search = InvokeCapture(["search", "durable BogDB memory", "--palace", productPalace], TestKit.Root);

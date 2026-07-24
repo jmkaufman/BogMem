@@ -13,7 +13,7 @@ offline. Set `BOGMEM_MODEL_CACHE` to choose the cache directory.
 
 ```bash
 # From a source checkout. Uses ~/.bogmem/palace unless --palace is supplied.
-dotnet run --project src/Bogmem.Cli -- init
+dotnet run --project src/Bogmem.Cli -- init --name my-project-memory
 
 dotnet run --project src/Bogmem.Cli -- add \
   --wing myproject \
@@ -46,10 +46,10 @@ Run the persistent MCP server over newline-delimited JSON-RPC on stdio:
 dotnet run --project src/Bogmem.Cli -- mcp --palace ~/.bogmem/palace
 ```
 
-The functional MCP path currently backs status, taxonomy/listing, project
-mining, search, duplicate checks, and drawer CRUD with BogDB. Parity-only tool
-definitions stay in the compatibility harness but are not advertised by the
-live server.
+Each live MCP process is bound to one persisted palace runtime. It exposes
+status, taxonomy/listing, project mining, search, duplicate checks, drawer CRUD,
+and temporal actor-graph observation and recall. Parity-only tool definitions
+stay in the compatibility harness but are not advertised by the live server.
 
 ### Project mining
 
@@ -163,6 +163,29 @@ but its deterministic assignments are not promised to match a stochastic
 Leiden implementation bit for bit. See
 [`docs/graph-memory.md`](docs/graph-memory.md) for the model and integration
 boundary.
+
+### Palace runtime and MCP
+
+Every product command now opens a `PalaceRuntime`: one owner for one BogDB
+database, one stable palace manifest, and the drawer and graph capabilities
+inside it. `bogmem init --name NAME` persists an immutable palace ID and name;
+subsequent status and MCP results include that ID so a router can detect a
+misdirected request.
+
+The runtime MCP surface adds:
+
+- `bogmem_palace_status`
+- `bogmem_graph_observe`
+- `bogmem_graph_neighbors`
+- `bogmem_graph_traverse`
+- `bogmem_graph_communities`
+
+`bogmem_graph_observe` accepts optional FTT lineage (`source`, `workflow_id`,
+`run_id`, `artifact_id`, and `signal_type`) as part of its idempotency
+fingerprint. Supplying `palace_id` on graph calls acts as a routing guard. Each
+MCP process still serves exactly one palace; a future Coliseum supervisor owns
+the registry and lifecycle of many such processes. See
+[`docs/palace-runtime.md`](docs/palace-runtime.md).
 
 ## Compatibility suite
 

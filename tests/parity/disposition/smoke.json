@@ -42,6 +42,14 @@
       "slice": "P5"
     },
     {
+      "test_id": "palace_runtime",
+      "module": "PalaceRuntime",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "stable manifest \u002B shared BogDB capability lifecycle",
+      "slice": "P6"
+    },
+    {
       "test_id": "bogdb_memory_store",
       "module": "BogDbMemoryStore",
       "status": "pass",

@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Bogmem.Graph/Bogmem.Graph.csproj" />
     <ProjectReference Include="../Bogmem.Harness/Bogmem.Harness.csproj" />
   </ItemGroup>
   <ItemGroup>
