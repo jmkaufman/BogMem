@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 using Bogmem.Slices.Config;
 using Bogmem.Slices.Dedup;
 using Bogmem.Slices.DeferredBackends;

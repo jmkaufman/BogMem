@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bogmem.Cli;
 using Bogmem.Graph;
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 using Bogmem.Slices.Mcp;
 using Bogmem.Slices.Embedding;
 using Bogmem.Slices.Runtime;

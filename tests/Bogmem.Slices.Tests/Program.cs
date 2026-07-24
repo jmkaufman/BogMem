@@ -1,4 +1,4 @@
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 using Bogmem.Slices.Tests;
 using Bogmem.Slices.Tests.Chroma;
 using Bogmem.Slices.Tests.Chunkers;

@@ -4,13 +4,12 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Bogmem.Harness.Interfaces;
 using Bogmem.Slices.Common;
 
 namespace Bogmem.Slices.Spellcheck;
 
 /// <summary>
-/// Port of spellcheck.py at LEGACY_COMMIT behind ISpeller, including the
+/// Port of spellcheck.py at LEGACY_COMMIT, including the
 /// autocorrect library's Norvig-style corrector (word frequencies vendored
 /// from autocorrect's en dictionary, MIT-licensed, as an embedded gzip) and
 /// the FreeBSD-maintained web2 valid-word corpus.
@@ -24,7 +23,7 @@ namespace Bogmem.Slices.Spellcheck;
 /// This slice is BOUNDED (D2): scored as per-token agreement ≥ 0.95 against
 /// the golden corpus, not exact equality.
 /// </summary>
-public sealed partial class Speller : ISpeller
+public sealed partial class Speller
 {
     public const int MinLength = 4;
     private const string TrailingPunctuation = ".,!?;:'\")";
@@ -66,7 +65,7 @@ public sealed partial class Speller : ISpeller
     /// <summary>Compatibility alias for the legacy system-word terminology.</summary>
     public IReadOnlySet<string> SystemWords => _validWords;
 
-    /// <summary>ISpeller entry point — spellcheck_user_text with this instance's known names.</summary>
+    /// <summary>Corrects user text using this instance's known names.</summary>
     public string Correct(string text) => SpellcheckUserText(text);
 
     public string SpellcheckUserText(string text)

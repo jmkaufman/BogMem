@@ -20,6 +20,8 @@ between releases.
 - A stateless MCP Streamable HTTP transport that shares the stdio MCP
   dispatcher, including health checks, bearer authentication, Origin and CORS
   controls, and protocol-version validation.
+- A `BogMem.Slices` NuGet package for applications that embed palace runtime,
+  storage, recall, registry, and MCP services directly.
 - An actor-graph sample and service-integration guidance for real-time memory
   ingestion and retrieval.
 
@@ -27,6 +29,8 @@ between releases.
 
 - Upgraded `BogDB.Core` to 1.4.0 for repaired graph merge behavior and the
   accompanying storage and query fixes.
+- Removed the standalone parity harness from the product dependency graph while
+  retaining golden-corpus replay in the CLI and test suite.
 - Extended MCP graph observations with routing guards and lineage and
   idempotency metadata.
 - Added the ASP.NET Core shared framework to the CLI package for the HTTP MCP

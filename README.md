@@ -35,7 +35,7 @@ install it from the checkout:
 ```bash
 dotnet pack src/Bogmem.Cli -c Release -o ./artifacts/packages
 dotnet tool install --global BogMem.Tool \
-  --version 0.1.0-preview.1 \
+  --version 0.1.0-preview.3 \
   --add-source ./artifacts/packages
 
 bogmem --help
@@ -68,8 +68,9 @@ settings, and a copyable client exchange.
 
 Each live MCP process is bound to one persisted palace runtime. It exposes
 status, taxonomy/listing, project mining, search, duplicate checks, drawer CRUD,
-and temporal actor-graph observation and recall. Parity-only tool definitions
-stay in the compatibility harness but are not advertised by the live server.
+and temporal actor-graph observation and recall. Compatibility-only tool
+definitions remain available to corpus replay but are not advertised by the
+live server.
 
 ### Project mining
 
@@ -119,6 +120,17 @@ dotnet run --project samples/Bogmem.Quickstart
 dotnet run --project samples/Bogmem.MoleculeApi -- --demo
 dotnet run --project samples/Bogmem.ActorGraph
 ```
+
+Applications that embed a palace directly can reference the runtime package:
+
+```xml
+<PackageReference Include="BogMem.Slices" Version="0.1.0-preview.3" />
+```
+
+`BogMem.Slices` exposes `PalaceRuntime`, drawer storage and recall, project
+mining, the palace registry, Coliseum recall, and the transport-neutral MCP
+dispatcher. `BogMem.Graph` remains the smaller package for applications that
+only need actor/co-activity graph memory.
 
 The frozen parity layer is evidence about the port, not an endorsement of every
 MemPalace behavior. Product APIs may correct inherited bugs when the divergence
@@ -239,8 +251,9 @@ edges are created. Process supervision remains a later Coliseum layer. See
 
 ## Compatibility suite
 
-The solution also contains the reusable golden-corpus harness and compatibility
-slices from the ASE porting effort.
+The test suite and `bogmem parity` command replay the frozen golden corpus from
+the ASE porting effort. Compatibility support is kept out of the product
+runtime dependency graph.
 
 Spellchecking is deterministic across Windows, macOS, and Linux. BogMem embeds
 the FreeBSD-maintained `web2` corpus, derived from *Webster's Second

@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 using Bogmem.Slices.Storage;
 
 namespace Bogmem.Slices.Tests.Storage;

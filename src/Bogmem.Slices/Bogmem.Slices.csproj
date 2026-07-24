@@ -3,10 +3,15 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <PackageId>BogMem.Slices</PackageId>
+    <Title>BogMem Slices</Title>
+    <Description>Embedded BogMem runtime for BogDB-backed palace storage, hybrid recall, graph memory, project mining, registry routing, and MCP dispatch.</Description>
+    <PackageTags>bogmem;bogdb;memory;runtime;retrieval;graph;mcp</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Bogmem.Graph/Bogmem.Graph.csproj" />
-    <ProjectReference Include="../Bogmem.Harness/Bogmem.Harness.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Mcp/tools.json">
@@ -24,5 +29,11 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" Link="README.md" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" Link="LICENSE" />
+    <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" Link="THIRD-PARTY-NOTICES.md" />
+    <None Include="Spellcheck/data/web2.NOTICE.md" Pack="true" PackagePath="/" Link="web2.NOTICE.md" />
   </ItemGroup>
 </Project>

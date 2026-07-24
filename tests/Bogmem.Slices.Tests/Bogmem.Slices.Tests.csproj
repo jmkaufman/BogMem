@@ -7,7 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Bogmem.Graph/Bogmem.Graph.csproj" />
-    <ProjectReference Include="../../src/Bogmem.Harness/Bogmem.Harness.csproj" />
     <ProjectReference Include="../../src/Bogmem.Slices/Bogmem.Slices.csproj" />
     <ProjectReference Include="../../src/Bogmem.Cli/Bogmem.Cli.csproj" />
   </ItemGroup>

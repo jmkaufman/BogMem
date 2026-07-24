@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 using Bogmem.Slices.Chunkers;
 
 namespace Bogmem.Slices.Tests.Chunkers;

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Package version, for example 0.1.0-preview.1"
+        description: "Package version, for example 0.1.0-preview.3"
         required: true
         type: string
 
@@ -53,7 +53,7 @@ jobs:
           fi
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "Publishing BogMem.Tool and BogMem.Graph $version" >> "$GITHUB_STEP_SUMMARY"
+          echo "Publishing BogMem.Tool, BogMem.Graph, and BogMem.Slices $version" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Restore and audit dependencies
         run: >
@@ -93,8 +93,13 @@ jobs:
         run: |
           package_version="${{ steps.version.outputs.version }}"
           graph_package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Graph.*.nupkg' -print -quit)"
+          slices_package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Slices.*.nupkg' -print -quit)"
           if [[ -z "$graph_package_path" ]]; then
             echo "BogMem.Graph package was not produced." >&2
+            exit 1
+          fi
+          if [[ -z "$slices_package_path" ]]; then
+            echo "BogMem.Slices package was not produced." >&2
             exit 1
           fi
           tool_path="$RUNNER_TEMP/bogmem-tool"
@@ -112,6 +117,20 @@ jobs:
             --palace "$palace_path"
           BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" search \
             "package smoke" --wing release --palace "$palace_path"
+
+      - name: Smoke-test embedded package
+        shell: bash
+        run: |
+          package_version="${{ steps.version.outputs.version }}"
+          dotnet restore eng/Bogmem.Slices.PackageSmoke/Bogmem.Slices.PackageSmoke.csproj \
+            --source "$GITHUB_WORKSPACE/artifacts/nuget" \
+            --source https://api.nuget.org/v3/index.json \
+            -p:BogMemPackageVersion="$package_version"
+          dotnet run \
+            --project eng/Bogmem.Slices.PackageSmoke/Bogmem.Slices.PackageSmoke.csproj \
+            --configuration Release \
+            --no-restore \
+            -p:BogMemPackageVersion="$package_version"
 
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v7

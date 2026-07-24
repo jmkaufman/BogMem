@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 using Bogmem.Slices.Dynamics;
 
 namespace Bogmem.Slices.Tests.Dynamics;

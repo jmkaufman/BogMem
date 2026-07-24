@@ -1,4 +1,4 @@
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 using Bogmem.Slices.DeferredBackends;
 
 namespace Bogmem.Slices.Tests.DeferredBackends;

@@ -63,12 +63,17 @@ jobs:
         run: |
           package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Tool.*.nupkg' -print -quit)"
           graph_package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Graph.*.nupkg' -print -quit)"
+          slices_package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Slices.*.nupkg' -print -quit)"
           if [[ -z "$package_path" ]]; then
             echo "BogMem.Tool package was not produced." >&2
             exit 1
           fi
           if [[ -z "$graph_package_path" ]]; then
             echo "BogMem.Graph package was not produced." >&2
+            exit 1
+          fi
+          if [[ -z "$slices_package_path" ]]; then
+            echo "BogMem.Slices package was not produced." >&2
             exit 1
           fi
 
@@ -90,6 +95,24 @@ jobs:
             --palace "$palace_path"
           BOGMEM_EMBEDDING_MODEL=lexical "$tool_path/bogmem" search \
             "package smoke" --wing release --palace "$palace_path"
+
+      - name: Smoke-test embedded package
+        shell: bash
+        run: |
+          slices_package_path="$(find artifacts/nuget -maxdepth 1 -name 'BogMem.Slices.*.nupkg' -print -quit)"
+          package_file="$(basename "$slices_package_path")"
+          package_version="${package_file#BogMem.Slices.}"
+          package_version="${package_version%.nupkg}"
+
+          dotnet restore eng/Bogmem.Slices.PackageSmoke/Bogmem.Slices.PackageSmoke.csproj \
+            --source "$GITHUB_WORKSPACE/artifacts/nuget" \
+            --source https://api.nuget.org/v3/index.json \
+            -p:BogMemPackageVersion="$package_version"
+          dotnet run \
+            --project eng/Bogmem.Slices.PackageSmoke/Bogmem.Slices.PackageSmoke.csproj \
+            --configuration Release \
+            --no-restore \
+            -p:BogMemPackageVersion="$package_version"
 
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v7
