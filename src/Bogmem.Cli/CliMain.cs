@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bogmem.Slices.Mcp;
 using Bogmem.Slices.Mining;
+using Bogmem.Slices.Runtime;
 using Bogmem.Slices.Storage;
 using Bogmem.Slices.Sync;
 
@@ -28,22 +29,35 @@ public static class CliMain
                 bogmem - local-first persistent memory
 
                 Commands:
-                  init [--palace path]
+                  init [--palace path] [--name palace-name]
                   add --wing name --room name --content text [--source-file path] [--palace path]
                   mine directory [--wing name] [--room name] [--agent name] [--limit n]
                                  [--max-chunks-per-file n] [--dry-run] [--palace path]
                   sync [directory] [--wing name] [--apply] [--palace path]
                   search "query" [--wing name] [--room name] [--limit n] [--palace path]
+                  recall "query" [--registry path] [--palaces id-or-name,...]
+                                   [--wing name] [--room name] [--limit n]
+                                   [--per-palace-limit n]
+                  recall-neighbors actor-id --window-start time --window-end time
+                                   [--registry path] [--palaces id-or-name,...]
                   status [--palace path]
                   list [--wing name] [--room name] [--limit n] [--offset n] [--palace path]
                   get drawer-id [--palace path]
                   delete drawer-id [--palace path]
-                  mcp [--palace path] [--read-only]
+                  mcp [--palace path | --registry path] [--read-only]
+                      [--transport stdio|http] [--listen http://127.0.0.1:7079]
+                      [--endpoint /mcp] [--token value] [--allowed-origin origins]
+                  registry register --palace path [--name palace-name] [--registry path]
+                  registry list [--registry path]
+                  registry resolve palace-id-or-name [--registry path]
+                  registry unregister palace-id-or-name [--registry path]
                   parity [module|all] [--golden path] [--report path]
                   --help
 
                 Palace path: --palace, BOGMEM_PALACE_PATH, MEMPALACE_PALACE_PATH,
                              or ~/.bogmem/palace
+                Registry path: --registry, BOGMEM_REGISTRY_PATH,
+                               or ~/.bogmem/registry.json
 
                 Mining config: mempalace.yaml (or .yml; legacy mempal.yaml/.yml also works).
                                --wing and --room override project configuration.
@@ -131,22 +145,26 @@ public static class CliMain
         switch (args[0])
         {
             case "init":
-                ValidateOptions(parsed, ["palace"]);
+                ValidateOptions(parsed, ["palace", "name"]);
                 RequireNoPositionals(parsed);
-                using (var store = new BogDbMemoryStore(palace)) WriteJson(stdout, store.Status());
+                using (var runtime = PalaceRuntime.Open(
+                           palace,
+                           parsed.Options.GetValueOrDefault("name")))
+                    WriteJson(stdout, runtime.Status());
                 return 0;
 
             case "status":
                 ValidateOptions(parsed, ["palace"]);
                 RequireNoPositionals(parsed);
-                using (var store = new BogDbMemoryStore(palace)) WriteJson(stdout, store.Status());
+                using (var runtime = PalaceRuntime.Open(palace))
+                    WriteJson(stdout, runtime.Status());
                 return 0;
 
             case "add":
                 ValidateOptions(parsed, ["palace", "wing", "room", "content", "source-file", "added-by"]);
                 RequireNoPositionals(parsed);
-                using (var store = new BogDbMemoryStore(palace))
-                    WriteJson(stdout, store.Add(
+                using (var runtime = PalaceRuntime.Open(palace))
+                    WriteJson(stdout, runtime.Memory.Add(
                         RequiredOption(parsed, "wing"),
                         RequiredOption(parsed, "room"),
                         RequiredOption(parsed, "content", trim: false),
@@ -161,8 +179,8 @@ public static class CliMain
                     ["palace", "wing", "room", "agent", "limit", "max-chunks-per-file"],
                     ["dry-run"]);
                 var source = Path.GetFullPath(SinglePositional(parsed, "mine requires a source directory"), workingDirectory);
-                using var store = new BogDbMemoryStore(palace);
-                var miner = new ProjectMiner(store);
+                using var runtime = PalaceRuntime.Open(palace);
+                var miner = new ProjectMiner(runtime.Memory);
                 var maxChunks = parsed.Options.ContainsKey("max-chunks-per-file")
                     ? LongOption(parsed, "max-chunks-per-file", 0, 0, long.MaxValue)
                     : (long?)null;
@@ -185,8 +203,8 @@ public static class CliMain
                 var projectDirectory = parsed.Positionals.Count == 0
                     ? null
                     : Path.GetFullPath(parsed.Positionals[0], workingDirectory);
-                using var store = new BogDbMemoryStore(palace);
-                WriteJson(stdout, new ProjectSync(store).Run(new ProjectSyncRequest(
+                using var runtime = PalaceRuntime.Open(palace);
+                WriteJson(stdout, new ProjectSync(runtime.Memory).Run(new ProjectSyncRequest(
                     projectDirectory,
                     parsed.Options.GetValueOrDefault("wing"),
                     parsed.Flags.Contains("apply"))));
@@ -201,7 +219,8 @@ public static class CliMain
                     : parsed.Positionals.Count == 0
                         ? RequiredOption(parsed, "query")
                         : throw new ArgumentException("search accepts exactly one query");
-                using var store = new BogDbMemoryStore(palace);
+                using var runtime = PalaceRuntime.Open(palace);
+                var store = runtime.Memory;
                 WriteJson(stdout, new
                 {
                     query,
@@ -217,11 +236,66 @@ public static class CliMain
                 return 0;
             }
 
+            case "recall":
+            {
+                ValidateOptions(
+                    parsed,
+                    [
+                        "registry", "palaces", "query", "wing", "room",
+                        "source-file", "limit", "per-palace-limit", "max-distance",
+                    ]);
+                var query = parsed.Positionals.Count == 1
+                    ? parsed.Positionals[0]
+                    : parsed.Positionals.Count == 0
+                        ? RequiredOption(parsed, "query")
+                        : throw new ArgumentException("recall accepts exactly one query");
+                var registry = new PalaceRegistry(ResolveRegistryPath(
+                    parsed.Options.GetValueOrDefault("registry"),
+                    workingDirectory));
+                var result = new ColiseumRecall(registry).Search(
+                    query,
+                    PalaceSelectors(parsed.Options.GetValueOrDefault("palaces")),
+                    IntOption(parsed, "limit", 10, 1, 1000),
+                    IntOption(parsed, "per-palace-limit", 5, 1, 100),
+                    parsed.Options.GetValueOrDefault("wing"),
+                    parsed.Options.GetValueOrDefault("room"),
+                    parsed.Options.GetValueOrDefault("source-file"),
+                    DoubleOption(parsed, "max-distance", 1.5));
+                WriteJson(stdout, result);
+                return result.PalacesRequested > 0 && result.PalacesSucceeded == 0 ? 1 : 0;
+            }
+
+            case "recall-neighbors":
+            {
+                ValidateOptions(
+                    parsed,
+                    [
+                        "registry", "palaces", "window-start", "window-end",
+                        "minimum-edge-weight", "limit", "per-palace-limit",
+                    ]);
+                var actorId = SinglePositional(
+                    parsed,
+                    "recall-neighbors requires exactly one actor ID");
+                var registry = new PalaceRegistry(ResolveRegistryPath(
+                    parsed.Options.GetValueOrDefault("registry"),
+                    workingDirectory));
+                var result = new ColiseumRecall(registry).Neighbors(
+                    actorId,
+                    TimestampOption(parsed, "window-start"),
+                    TimestampOption(parsed, "window-end"),
+                    PalaceSelectors(parsed.Options.GetValueOrDefault("palaces")),
+                    IntOption(parsed, "limit", 100, 1, 1000),
+                    IntOption(parsed, "per-palace-limit", 100, 1, 100),
+                    DoubleOption(parsed, "minimum-edge-weight", 0));
+                WriteJson(stdout, result);
+                return result.PalacesRequested > 0 && result.PalacesSucceeded == 0 ? 1 : 0;
+            }
+
             case "list":
                 ValidateOptions(parsed, ["palace", "wing", "room", "limit", "offset"]);
                 RequireNoPositionals(parsed);
-                using (var store = new BogDbMemoryStore(palace))
-                    WriteJson(stdout, store.List(
+                using (var runtime = PalaceRuntime.Open(palace))
+                    WriteJson(stdout, runtime.Memory.List(
                         parsed.Options.GetValueOrDefault("wing"),
                         parsed.Options.GetValueOrDefault("room"),
                         IntOption(parsed, "limit", 20, 1, 100),
@@ -232,8 +306,8 @@ public static class CliMain
             {
                 ValidateOptions(parsed, ["palace"]);
                 var id = SinglePositional(parsed, "get requires a drawer ID");
-                using var store = new BogDbMemoryStore(palace);
-                var drawer = store.Get(id);
+                using var runtime = PalaceRuntime.Open(palace);
+                var drawer = runtime.Memory.Get(id);
                 if (drawer is null) { stderr.WriteLine($"Drawer not found: {id}"); return 1; }
                 WriteJson(stdout, drawer);
                 return 0;
@@ -243,16 +317,45 @@ public static class CliMain
             {
                 ValidateOptions(parsed, ["palace"]);
                 var id = SinglePositional(parsed, "delete requires a drawer ID");
-                using var store = new BogDbMemoryStore(palace);
-                var deleted = store.Delete(id);
+                using var runtime = PalaceRuntime.Open(palace);
+                var deleted = runtime.Memory.Delete(id);
                 WriteJson(stdout, new { drawerId = id, deleted });
                 return deleted ? 0 : 1;
             }
 
             case "mcp":
-                ValidateOptions(parsed, ["palace"], ["read-only"]);
+                ValidateOptions(
+                    parsed,
+                    [
+                        "palace", "registry", "transport", "listen", "endpoint",
+                        "token", "allowed-origin",
+                    ],
+                    ["read-only"]);
                 RequireNoPositionals(parsed);
-                return RunMcp(palace, parsed.Flags.Contains("read-only"), stdin, stdout, stderr);
+                var transport = ResolveMcpTransport(parsed);
+                if (parsed.Options.ContainsKey("registry"))
+                {
+                    if (parsed.Options.ContainsKey("palace"))
+                        throw new ArgumentException(
+                            "mcp accepts either --palace or --registry, not both");
+                    var server = new McpServer(
+                        new PalaceRegistry(ResolveRegistryPath(
+                            parsed.Options["registry"],
+                            workingDirectory)));
+                    return transport == "http"
+                        ? RunMcpHttp(server, ResolveMcpHttpOptions(parsed), stderr)
+                        : RunMcp(server, stdin, stdout, stderr);
+                }
+                return transport == "http"
+                    ? RunMcpHttp(
+                        palace,
+                        parsed.Flags.Contains("read-only"),
+                        ResolveMcpHttpOptions(parsed),
+                        stderr)
+                    : RunMcp(palace, parsed.Flags.Contains("read-only"), stdin, stdout, stderr);
+
+            case "registry":
+                return RunRegistry(parsed, stdout, stderr, workingDirectory);
 
             default:
                 stderr.WriteLine($"Unknown command '{args[0]}'. Use --help.");
@@ -260,10 +363,94 @@ public static class CliMain
         }
     }
 
+    private static int RunRegistry(
+        ParsedArguments parsed,
+        TextWriter stdout,
+        TextWriter stderr,
+        string workingDirectory)
+    {
+        if (parsed.Positionals.Count == 0)
+            throw new ArgumentException(
+                "registry requires one of: register, list, resolve, unregister");
+
+        var command = parsed.Positionals[0];
+        var registryPath = ResolveRegistryPath(
+            parsed.Options.GetValueOrDefault("registry"),
+            workingDirectory);
+        var registry = new PalaceRegistry(registryPath);
+        switch (command)
+        {
+            case "register":
+            {
+                ValidateOptions(parsed, ["registry", "palace", "name"]);
+                if (parsed.Positionals.Count != 1)
+                    throw new ArgumentException("registry register accepts no positional palace selector");
+                var palacePath = ResolvePalacePath(
+                    parsed.Options.GetValueOrDefault("palace"),
+                    workingDirectory);
+                using var runtime = PalaceRuntime.Open(
+                    palacePath,
+                    parsed.Options.GetValueOrDefault("name"));
+                WriteJson(stdout, registry.Register(runtime));
+                return 0;
+            }
+
+            case "list":
+                ValidateOptions(parsed, ["registry"]);
+                if (parsed.Positionals.Count != 1)
+                    throw new ArgumentException("registry list accepts no palace selector");
+                WriteJson(stdout, registry.Snapshot());
+                return 0;
+
+            case "resolve":
+                ValidateOptions(parsed, ["registry"]);
+                if (parsed.Positionals.Count != 2)
+                    throw new ArgumentException(
+                        "registry resolve requires exactly one palace ID or name");
+                WriteJson(stdout, registry.Resolve(parsed.Positionals[1]));
+                return 0;
+
+            case "unregister":
+                ValidateOptions(parsed, ["registry"]);
+                if (parsed.Positionals.Count != 2)
+                    throw new ArgumentException(
+                        "registry unregister requires exactly one palace ID or name");
+                if (!registry.Unregister(parsed.Positionals[1], out var removed))
+                {
+                    stderr.WriteLine(
+                        $"Palace not registered: {parsed.Positionals[1]}");
+                    return 1;
+                }
+                WriteJson(stdout, new { removed = true, palace = removed });
+                return 0;
+
+            default:
+                throw new ArgumentException(
+                    $"Unknown registry command '{command}'. " +
+                    "Use register, list, resolve, or unregister.");
+        }
+    }
+
     private static int RunMcp(string palace, bool readOnly, TextReader stdin, TextWriter stdout, TextWriter stderr)
     {
-        using var store = new BogDbMemoryStore(palace);
-        var server = new McpServer(store) { ReadOnly = readOnly };
+        using var runtime = PalaceRuntime.Open(palace);
+        var server = new McpServer(runtime) { ReadOnly = readOnly };
+        return RunMcp(server, stdin, stdout, stderr);
+    }
+
+    private static int RunMcp(
+        PalaceRegistry registry,
+        TextReader stdin,
+        TextWriter stdout,
+        TextWriter stderr) =>
+        RunMcp(new McpServer(registry), stdin, stdout, stderr);
+
+    private static int RunMcp(
+        McpServer server,
+        TextReader stdin,
+        TextWriter stdout,
+        TextWriter stderr)
+    {
         string? line;
         while ((line = stdin.ReadLine()) is not null)
         {
@@ -286,6 +473,85 @@ public static class CliMain
             stdout.Flush();
         }
         return 0;
+    }
+
+    private static int RunMcpHttp(
+        string palace,
+        bool readOnly,
+        McpHttpOptions options,
+        TextWriter stderr)
+    {
+        using var runtime = PalaceRuntime.Open(palace);
+        return RunMcpHttp(new McpServer(runtime) { ReadOnly = readOnly }, options, stderr);
+    }
+
+    private static int RunMcpHttp(
+        McpServer server,
+        McpHttpOptions options,
+        TextWriter stderr)
+    {
+        stderr.WriteLine(
+            $"BogMem MCP Streamable HTTP listening on " +
+            $"{options.ListenUri.GetLeftPart(UriPartial.Authority)}{options.Endpoint}");
+        stderr.WriteLine("Health: " +
+                         $"{options.ListenUri.GetLeftPart(UriPartial.Authority)}/healthz");
+        using var shutdown = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancel = (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            shutdown.Cancel();
+        };
+        Console.CancelKeyPress += cancel;
+        McpHttpHost? host = null;
+        try
+        {
+            host = McpHttpTransport.Create(server, options);
+            host.RunAsync(shutdown.Token).GetAwaiter().GetResult();
+            return 0;
+        }
+        catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+        {
+            return 0;
+        }
+        finally
+        {
+            if (host is not null)
+                host.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            Console.CancelKeyPress -= cancel;
+        }
+    }
+
+    private static string ResolveMcpTransport(ParsedArguments parsed)
+    {
+        var transport = (
+            parsed.Options.GetValueOrDefault("transport") ??
+            Environment.GetEnvironmentVariable("BOGMEM_MCP_TRANSPORT") ??
+            "stdio").Trim().ToLowerInvariant();
+        if (transport is not ("stdio" or "http"))
+            throw new ArgumentException("--transport must be stdio or http");
+        if (transport == "stdio" &&
+            parsed.Options.Keys.Any(key =>
+                key is "listen" or "endpoint" or "token" or "allowed-origin"))
+            throw new ArgumentException(
+                "--listen, --endpoint, --token, and --allowed-origin require --transport http");
+        return transport;
+    }
+
+    private static McpHttpOptions ResolveMcpHttpOptions(ParsedArguments parsed)
+    {
+        var allowedOrigins = (
+                parsed.Options.GetValueOrDefault("allowed-origin") ??
+                Environment.GetEnvironmentVariable("BOGMEM_MCP_ALLOWED_ORIGINS") ??
+                "")
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return new McpHttpOptions(
+            parsed.Options.GetValueOrDefault("listen") ??
+            Environment.GetEnvironmentVariable("BOGMEM_MCP_LISTEN"),
+            parsed.Options.GetValueOrDefault("endpoint") ??
+            Environment.GetEnvironmentVariable("BOGMEM_MCP_ENDPOINT"),
+            parsed.Options.GetValueOrDefault("token") ??
+            Environment.GetEnvironmentVariable("BOGMEM_MCP_TOKEN"),
+            allowedOrigins);
     }
 
     private sealed record ParsedArguments(
@@ -326,6 +592,15 @@ public static class CliMain
         return Path.Combine(profile, ".bogmem", "palace");
     }
 
+    private static string ResolveRegistryPath(string? option, string workingDirectory)
+    {
+        var configured = option
+            ?? Environment.GetEnvironmentVariable(PalaceRegistry.EnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(configured))
+            return Path.GetFullPath(configured, workingDirectory);
+        return PalaceRegistry.DefaultPath;
+    }
+
     private static string RequiredOption(ParsedArguments parsed, string name, bool trim = true)
     {
         if (!parsed.Options.TryGetValue(name, out var value) || string.IsNullOrWhiteSpace(value))
@@ -347,6 +622,31 @@ public static class CliMain
         if (!double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value))
             throw new ArgumentException($"--{name} must be a number");
         return value;
+    }
+
+    private static DateTimeOffset TimestampOption(
+        ParsedArguments parsed,
+        string name)
+    {
+        var raw = RequiredOption(parsed, name);
+        if (!DateTimeOffset.TryParse(
+                raw,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal |
+                System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var value))
+            throw new ArgumentException($"--{name} must be an ISO-8601 timestamp");
+        return value;
+    }
+
+    private static IReadOnlyList<string>? PalaceSelectors(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var selectors = raw
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (selectors.Length == 0)
+            throw new ArgumentException("--palaces must contain at least one palace ID or name");
+        return selectors;
     }
 
     private static long LongOption(ParsedArguments parsed, string name, long fallback, long min, long max)

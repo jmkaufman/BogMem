@@ -1,7 +1,8 @@
 # Integrating BogMem
 
-BogMem has three integration surfaces. Pick the smallest one that fits your
-application; all three use the same persistent BogDB palace.
+BogMem has five integration surfaces. Pick the smallest one that fits your
+application; the persistent surfaces use BogDB and the fixed-window graph can
+run entirely in memory.
 
 ## Real-world service example
 
@@ -88,8 +89,9 @@ During development, point an MCP host at the checkout using absolute paths:
 ```
 
 The server uses newline-delimited JSON-RPC over stdio. Its advertised tools are
-only the product operations that are actually implemented. A practical agent
-flow is:
+only the product operations that are actually implemented. The process owns one
+palace runtime; start another process with a different `--palace` path for an
+isolated MCP service. A practical agent flow is:
 
 1. Call `mempalace_mine` once for a project.
 2. Call `mempalace_search` before guessing about prior decisions or code.
@@ -98,11 +100,44 @@ flow is:
 4. Call `mempalace_sync` without `apply` to inspect stale sources.
 5. Apply sync only with the intended `project_dir`.
 
+Event workflows can call `bogmem_graph_observe`, then query a temporal window
+with `bogmem_graph_neighbors`, `bogmem_graph_traverse`, or
+`bogmem_graph_communities`. Include the `palace_id` returned by
+`bogmem_palace_status` when a router or Coliseum service is selecting the
+destination palace.
+
 The current retrieval mode combines local MiniLM semantic vectors in BogDB's
 maintained HNSW index with native BM25. Check both
 `mempalace_status.retrieval_mode` and `embedding_model` instead of assuming a
 backend or model. `mempalace_mine` uses the same project configuration and
 returns its `files_by_room` distribution.
+
+For a service-to-service client such as FTT, start the identical tool surface
+over Streamable HTTP:
+
+```bash
+export BOGMEM_MCP_TOKEN="replace-with-a-secret"
+bogmem mcp \
+  --palace /data/palaces/social-signals \
+  --transport http \
+  --listen http://127.0.0.1:7079
+```
+
+Each JSON-RPC message is a separate `POST http://127.0.0.1:7079/mcp` request:
+
+```bash
+curl http://127.0.0.1:7079/mcp \
+  -H "Authorization: Bearer $BOGMEM_MCP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "MCP-Protocol-Version: 2025-11-25" \
+  --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+Notifications receive `202 Accepted`; requests receive one JSON response.
+BogMem does not need an SSE channel or session ID. See
+[`docs/mcp-http.md`](../docs/mcp-http.md) for initialization and FTT lineage
+examples.
 
 ## 3. Embedded .NET API
 
@@ -121,20 +156,52 @@ The essential embedded setup is:
 
 ```csharp
 using Bogmem.Slices.Mining;
-using Bogmem.Slices.Storage;
+using Bogmem.Slices.Runtime;
 
-using var store = new BogDbMemoryStore("/path/to/palace");
-new ProjectMiner(store).Mine(new ProjectMineRequest(
+using var palace = PalaceRuntime.Open("/path/to/palace", "my-project");
+new ProjectMiner(palace.Memory).Mine(new ProjectMineRequest(
     "/path/to/project",
     Wing: "my_project"));
 
-var hits = store.Search("authentication decision", wing: "my_project");
+var hits = palace.Memory.Search("authentication decision", wing: "my_project");
 ```
 
-Keep one long-lived store per process. Dispose it during shutdown. Coordinate
-different processes through the CLI/MCP workflow so the palace write lock can
-prevent mine/sync overlap.
+Keep one long-lived runtime per palace service and dispose it during shutdown.
+Coordinate different processes through the CLI/MCP workflow so the palace
+database lock can prevent competing owners.
 
 The default constructor resolves local MiniLM and downloads its model on first
 embedding. Tests or constrained offline deployments can inject an
 `IMemoryEmbedder` directly or set `BOGMEM_EMBEDDING_MODEL=lexical`.
+
+## 4. Weighted actor-graph memory
+
+Run the fixed-window co-activity example:
+
+```bash
+dotnet run --project samples/Bogmem.ActorGraph
+```
+
+[`Bogmem.ActorGraph`](Bogmem.ActorGraph/README.md) demonstrates the intended
+seam for workflow and stream-processing systems. The caller emits normalized,
+replay-safe observations; `BogMem.Graph` aggregates weighted actor pairs,
+serves neighborhoods, and detects communities. Use `ActorGraphWindow` for an
+in-memory analysis window or `BogDbActorGraphStore` when observations must be
+replayed across windows.
+
+## 5. Coliseum recall
+
+Register independently owned palaces in a Coliseum, then recall across them
+without merging their storage:
+
+```bash
+bogmem registry register --palace /data/palaces/social-signals
+bogmem registry register --palace /data/palaces/artifacts
+bogmem recall "shared endpoint activity" --limit 20
+```
+
+Use `bogmem mcp --registry ~/.bogmem/registry.json` when an MCP client needs the
+read-only `bogmem_recall` and `bogmem_graph_recall_neighbors` tools. Results
+retain palace IDs and local ranks. The complete ranking and partial-failure
+contract is in
+[`docs/cross-palace-recall.md`](../docs/cross-palace-recall.md).

@@ -1,6 +1,5 @@
-using Bogmem.Harness.Interfaces;
 namespace Bogmem.Slices.Chroma;
-public sealed class ChromaStore : IAnnIndex
+public sealed class ChromaStore
 {
  private readonly List<(string Id,float[] Vector)> items=[];
  public void Add(string id,ReadOnlySpan<float> vector){items.RemoveAll(x=>x.Id==id);items.Add((id,vector.ToArray()));}

@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.1</VersionSuffix>
+    <VersionSuffix>preview.3</VersionSuffix>
     <Authors>Beyond Ordinary Software Solutions</Authors>
     <Company>Beyond Ordinary Software Solutions</Company>
     <Copyright>Copyright © 2026 Beyond Ordinary Software Solutions</Copyright>

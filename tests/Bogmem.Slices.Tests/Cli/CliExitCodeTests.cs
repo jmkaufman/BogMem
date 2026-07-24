@@ -23,6 +23,10 @@ public static class CliExitCodeTests
                 Invoke(["parity", "ids", "--golden"], TestKit.Root));
             Expect(failures, "unknown command -> 2", 2,
                 Invoke(["frobnicate"], TestKit.Root));
+            Expect(failures, "unknown MCP transport -> 2", 2,
+                Invoke(["mcp", "--transport", "websocket"], TestKit.Root));
+            Expect(failures, "HTTP-only MCP option on stdio -> 2", 2,
+                Invoke(["mcp", "--listen", "http://127.0.0.1:7079"], TestKit.Root));
             Expect(failures, "nonexistent --golden -> 2", 2,
                 Invoke(["parity", "ids", "--golden", Path.Combine(scratch, "does-not-exist")],
                     TestKit.Root, out var goldenErr));
@@ -56,8 +60,18 @@ public static class CliExitCodeTests
             Expect(failures, "--help -> 0", 0, Invoke(["--help"], TestKit.Root));
 
             var productPalace = Path.Combine(scratch, "product-palace");
-            var init = InvokeCapture(["init", "--palace", productPalace], TestKit.Root);
+            var init = InvokeCapture(
+                ["init", "--palace", productPalace, "--name", "cli-test-palace"],
+                TestKit.Root);
             Expect(failures, "product init -> 0", 0, init.Code);
+            string initializedPalaceId;
+            using (var initJson = JsonDocument.Parse(init.Stdout))
+            {
+                initializedPalaceId = initJson.RootElement.GetProperty("palaceId").GetString() ?? "";
+                if (string.IsNullOrWhiteSpace(initializedPalaceId)) failures.Add("product init palace ID");
+                if (initJson.RootElement.GetProperty("palaceName").GetString() != "cli-test-palace")
+                    failures.Add("product init palace name");
+            }
             var add = InvokeCapture([
                 "add", "--palace", productPalace,
                 "--wing", "bogmem", "--room", "backend",
@@ -73,6 +87,78 @@ public static class CliExitCodeTests
             {
                 if (statusJson.RootElement.GetProperty("backend").GetString() != "bogdb") failures.Add("product status backend");
                 if (statusJson.RootElement.GetProperty("drawers").GetInt32() != 1) failures.Add("product status drawer count");
+                if (statusJson.RootElement.GetProperty("palaceId").GetString() != initializedPalaceId)
+                    failures.Add("product status stable palace ID");
+            }
+
+            var registryPath = Path.Combine(scratch, "registry", "palaces.json");
+            var register = InvokeCapture([
+                "registry", "register",
+                "--palace", productPalace,
+                "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "registry register -> 0", 0, register.Code);
+            using (var registerJson = JsonDocument.Parse(register.Stdout))
+                if (registerJson.RootElement.GetProperty("palaceId").GetString() != initializedPalaceId)
+                    failures.Add("registry register palace ID");
+
+            var registryList = InvokeCapture([
+                "registry", "list", "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "registry list -> 0", 0, registryList.Code);
+            using (var listJson = JsonDocument.Parse(registryList.Stdout))
+            {
+                if (listJson.RootElement.GetProperty("schemaVersion").GetInt32() != 1)
+                    failures.Add("registry schema version");
+                if (listJson.RootElement.GetProperty("palaces").GetArrayLength() != 1)
+                    failures.Add("registry list count");
+            }
+
+            var resolve = InvokeCapture([
+                "registry", "resolve", "cli-test-palace", "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "registry resolve -> 0", 0, resolve.Code);
+            using (var resolveJson = JsonDocument.Parse(resolve.Stdout))
+                if (resolveJson.RootElement.GetProperty("databasePath").GetString() != Path.GetFullPath(productPalace))
+                    failures.Add("registry resolve path");
+
+            var secondPalace = Path.Combine(scratch, "second-palace");
+            var secondInit = InvokeCapture([
+                "init", "--palace", secondPalace, "--name", "cli-second-palace"
+            ], TestKit.Root);
+            Expect(failures, "second palace init -> 0", 0, secondInit.Code);
+            var secondAdd = InvokeCapture([
+                "add", "--palace", secondPalace,
+                "--wing", "bogmem", "--room", "backend",
+                "--content", "A second palace also retains durable BogDB memory."
+            ], TestKit.Root);
+            Expect(failures, "second palace add -> 0", 0, secondAdd.Code);
+            var secondRegister = InvokeCapture([
+                "registry", "register",
+                "--palace", secondPalace,
+                "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "second registry register -> 0", 0, secondRegister.Code);
+
+            var federatedRecall = InvokeCapture([
+                "recall", "durable BogDB memory",
+                "--registry", registryPath,
+                "--limit", "2",
+                "--per-palace-limit", "1",
+                "--max-distance", "2"
+            ], TestKit.Root);
+            Expect(failures, "federated recall -> 0", 0, federatedRecall.Code);
+            using (var recallJson = JsonDocument.Parse(federatedRecall.Stdout))
+            {
+                var hits = recallJson.RootElement.GetProperty("hits");
+                if (recallJson.RootElement.GetProperty("palacesSucceeded").GetInt32() != 2)
+                    failures.Add("federated recall palace count");
+                if (hits.GetArrayLength() != 2 ||
+                    hits.EnumerateArray()
+                        .Select(hit => hit.GetProperty("palaceId").GetString())
+                        .Distinct()
+                        .Count() != 2)
+                    failures.Add("federated recall should interleave sourced palace hits");
             }
 
             var search = InvokeCapture(["search", "durable BogDB memory", "--palace", productPalace], TestKit.Root);
@@ -145,6 +231,27 @@ public static class CliExitCodeTests
             foreach (var module in ParityRunner.KnownModules)
                 Expect(failures, $"parity {module} -> 0", 0,
                     Invoke(["parity", module, "--report", Path.Combine(scratch, $"pr_{module}.json")], TestKit.Root));
+
+            Directory.Delete(secondPalace, recursive: true);
+            var unavailableRecall = InvokeCapture([
+                "recall", "durable memory",
+                "--registry", registryPath,
+                "--palaces", "cli-second-palace"
+            ], TestKit.Root);
+            Expect(failures, "all selected recall palaces unavailable -> 1", 1, unavailableRecall.Code);
+            using (var unavailableJson = JsonDocument.Parse(unavailableRecall.Stdout))
+                if (unavailableJson.RootElement.GetProperty("failures").GetArrayLength() != 1)
+                    failures.Add("unavailable federated recall should return sourced failure");
+
+            var unregister = InvokeCapture([
+                "registry", "unregister", initializedPalaceId, "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "registry unregister -> 0", 0, unregister.Code);
+            Expect(failures, "registry unregister missing -> 1", 1,
+                Invoke([
+                    "registry", "unregister", initializedPalaceId,
+                    "--registry", registryPath
+                ], TestKit.Root));
         }
         finally
         {

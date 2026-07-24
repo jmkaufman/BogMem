@@ -1,13 +1,13 @@
 using System.Globalization;
 using System.Text.Json;
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 using Bogmem.Slices.Common;
 using Bogmem.Slices.Spellcheck;
 
 namespace Bogmem.Slices.Tests.Spellcheck;
 
 /// <summary>
-/// S12 — spellcheck behind ISpeller, BOUNDED (D2): aggregate per-token
+/// S12 — deterministic spellcheck, BOUNDED (D2): aggregate per-token
 /// agreement against golden/spellcheck must be ≥ 0.95. Below the bar is a
 /// regression; the module is excluded from the exact-parity floor denominator.
 /// </summary>

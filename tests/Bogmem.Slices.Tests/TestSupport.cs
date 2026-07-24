@@ -1,4 +1,4 @@
-using Bogmem.Harness;
+using Bogmem.Cli.Parity;
 
 namespace Bogmem.Slices.Tests;
 

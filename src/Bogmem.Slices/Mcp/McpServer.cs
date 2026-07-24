@@ -3,19 +3,24 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bogmem.Slices.Mining;
+using Bogmem.Slices.Runtime;
 using Bogmem.Slices.Storage;
 using Bogmem.Slices.Sync;
 
 namespace Bogmem.Slices.Mcp;
 
 /// <summary>
-/// JSON-RPC 2.0 MCP server wire: 36 tools (14 mutating), error codes
-/// -32002/-32003/-32000, asymmetric protocol-version fallback
-/// (missing→oldest, unrecognized→newest).
+/// JSON-RPC 2.0 MCP server wire. The frozen compatibility catalog has 36 tools
+/// (14 mutating); a product palace runtime adds canonical BogMem graph tools,
+/// while a registry-bound Coliseum exposes only read-only cross-palace recall.
+/// Preserves error codes -32002/-32003/-32000 and asymmetric protocol-version
+/// fallback (missing→oldest, unrecognized→newest).
 /// </summary>
-public sealed class McpServer
+public sealed partial class McpServer
 {
     private readonly IMemoryStore? _memoryStore;
+    private readonly PalaceRuntime? _runtime;
+    private readonly ColiseumRecall? _coliseum;
     public static readonly string[] SupportedProtocolVersions =
     [
         "2025-11-25",
@@ -35,12 +40,14 @@ public sealed class McpServer
         "mempalace_add_drawer", "mempalace_checkpoint", "mempalace_delete_drawer",
         "mempalace_mine", "mempalace_delete_by_source", "mempalace_sync",
         "mempalace_update_drawer", "mempalace_diary_write",
+        "bogmem_graph_observe",
     };
 
     private static readonly HashSet<string> SqliteIntegrityAllowedTools = new(StringComparer.Ordinal)
     {
         "mempalace_status",
         "mempalace_reconnect",
+        "bogmem_palace_status",
     };
 
     private static readonly HashSet<string> ProductTools = new(StringComparer.Ordinal)
@@ -49,6 +56,8 @@ public sealed class McpServer
         "mempalace_search", "mempalace_check_duplicate", "mempalace_add_drawer",
         "mempalace_delete_drawer", "mempalace_delete_by_source", "mempalace_get_drawer",
         "mempalace_list_drawers", "mempalace_update_drawer", "mempalace_mine", "mempalace_sync",
+        "bogmem_palace_status", "bogmem_graph_observe", "bogmem_graph_neighbors",
+        "bogmem_graph_traverse", "bogmem_graph_communities",
     };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -69,7 +78,39 @@ public sealed class McpServer
     public McpServer(IMemoryStore? memoryStore = null)
     {
         _memoryStore = memoryStore;
+        _runtime = null;
+        _coliseum = null;
         ToolList = LoadTools();
+        Tools = ToolList.ToDictionary(t => t.Name, StringComparer.Ordinal);
+    }
+
+    public McpServer(PalaceRuntime runtime)
+    {
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+        _memoryStore = runtime.Memory;
+        _coliseum = null;
+        ServerVersion = typeof(PalaceRuntime).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion.Split('+', 2)[0]
+            ?? typeof(PalaceRuntime).Assembly.GetName().Version?.ToString()
+            ?? "unknown";
+        ToolList = LoadTools().Concat(RuntimeToolSpecs()).ToArray();
+        Tools = ToolList.ToDictionary(t => t.Name, StringComparer.Ordinal);
+    }
+
+    public McpServer(PalaceRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        _runtime = null;
+        _memoryStore = null;
+        _coliseum = new ColiseumRecall(registry);
+        ReadOnly = true;
+        ServerVersion = typeof(ColiseumRecall).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion.Split('+', 2)[0]
+            ?? typeof(ColiseumRecall).Assembly.GetName().Version?.ToString()
+            ?? "unknown";
+        ToolList = ColiseumToolSpecs();
         Tools = ToolList.ToDictionary(t => t.Name, StringComparer.Ordinal);
     }
 
@@ -121,7 +162,11 @@ public sealed class McpServer
                     ["capabilities"] = new JsonObject { ["tools"] = new JsonObject() },
                     ["serverInfo"] = new JsonObject
                     {
-                        ["name"] = "mempalace",
+                        ["name"] = _coliseum is not null
+                            ? "bogmem-coliseum"
+                            : _runtime is null
+                                ? "mempalace"
+                                : "bogmem",
                         ["version"] = ServerVersion,
                     },
                 },
@@ -269,6 +314,24 @@ public sealed class McpServer
                     },
                 };
             }
+            catch (ArgumentException ex)
+            {
+                return new JsonObject
+                {
+                    ["jsonrpc"] = "2.0",
+                    ["id"] = reqId,
+                    ["error"] = new JsonObject
+                    {
+                        ["code"] = -32602,
+                        ["message"] = "Invalid params",
+                        ["data"] = new JsonObject
+                        {
+                            ["error_class"] = ex.GetType().Name,
+                            ["message"] = ex.Message,
+                        },
+                    },
+                };
+            }
             catch (Exception ex)
             {
                 return new JsonObject
@@ -312,6 +375,7 @@ public sealed class McpServer
 
     private JsonObject DispatchTool(string name, JsonObject args)
     {
+        if (_coliseum is not null) return DispatchColiseumTool(name, args);
         if (_memoryStore is null) return DispatchStub(name, args);
         return name switch
         {
@@ -333,6 +397,11 @@ public sealed class McpServer
             "mempalace_update_drawer" => UpdateDrawerResult(args),
             "mempalace_mine" => MineResult(args),
             "mempalace_sync" => SyncResult(args),
+            "bogmem_palace_status" => StatusResult(),
+            "bogmem_graph_observe" => GraphObserveResult(args),
+            "bogmem_graph_neighbors" => GraphNeighborsResult(args),
+            "bogmem_graph_traverse" => GraphTraverseResult(args),
+            "bogmem_graph_communities" => GraphCommunitiesResult(args),
             _ => new JsonObject
             {
                 ["success"] = false,
@@ -344,7 +413,7 @@ public sealed class McpServer
     private JsonObject StatusResult()
     {
         var status = _memoryStore!.Status();
-        return new JsonObject
+        var result = new JsonObject
         {
             ["status"] = "ok",
             ["backend"] = status.Backend,
@@ -355,6 +424,18 @@ public sealed class McpServer
             ["retrieval_mode"] = status.RetrievalMode,
             ["embedding_model"] = status.EmbeddingModel,
         };
+        if (_runtime is not null)
+        {
+            var runtime = _runtime.Status();
+            result["palace_id"] = runtime.PalaceId;
+            result["palace_name"] = runtime.PalaceName;
+            result["schema_version"] = runtime.SchemaVersion;
+            result["actors"] = runtime.Actors;
+            result["observations"] = runtime.Observations;
+            result["capabilities"] = new JsonArray(
+                runtime.Capabilities.Select(value => (JsonNode?)JsonValue.Create(value)).ToArray());
+        }
+        return result;
     }
 
     private JsonObject WingsResult()
@@ -638,7 +719,22 @@ public sealed class McpServer
         return value;
     }
 
-    private static double ArgDouble(JsonObject args, string name, double fallback) => args[name]?.GetValue<double>() ?? fallback;
+    private static double ArgDouble(
+        JsonObject args,
+        string name,
+        double fallback)
+    {
+        var node = args[name];
+        if (node is null) return fallback;
+        if (node.GetValueKind() != JsonValueKind.Number ||
+            !double.TryParse(
+                node.ToJsonString(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var value))
+            throw new ArgumentException($"'{name}' must be a number");
+        return value;
+    }
 
     private static JsonObject DispatchStub(string name, JsonObject args) => name switch
     {

@@ -30,16 +30,49 @@ public sealed class BogDbMemoryStore : IMemoryStore
     private readonly BogConnection _connection;
     private readonly FtsExtension _ftsExtension;
     private readonly IMemoryEmbedder _embedder;
+    private readonly bool _ownsDatabase;
     private bool _disposed;
 
     public string DatabasePath { get; }
 
     public BogDbMemoryStore(string databasePath, IMemoryEmbedder? embedder = null)
+        : this(OpenOwned(databasePath), embedder)
     {
-        if (string.IsNullOrWhiteSpace(databasePath)) throw new ArgumentException("A BogDB palace path is required.", nameof(databasePath));
-        DatabasePath = Path.GetFullPath(databasePath);
+    }
+
+    private BogDbMemoryStore(
+        (BogDatabase Database, string DatabasePath) owned,
+        IMemoryEmbedder? embedder)
+        : this(owned.Database, owned.DatabasePath, embedder, ownsDatabase: true)
+    {
+    }
+
+    /// <summary>
+    /// Attaches drawer memory to a database owned by a wider palace runtime.
+    /// Disposing this store closes its connection and embedder, not the database.
+    /// </summary>
+    public BogDbMemoryStore(
+        BogDatabase database,
+        string databasePath,
+        IMemoryEmbedder? embedder = null)
+        : this(database, databasePath, embedder, ownsDatabase: false)
+    {
+    }
+
+    private BogDbMemoryStore(
+        BogDatabase database,
+        string databasePath,
+        IMemoryEmbedder? embedder,
+        bool ownsDatabase)
+    {
+        _database = database ?? throw new ArgumentNullException(nameof(database));
+        if (string.IsNullOrWhiteSpace(databasePath))
+            throw new ArgumentException("A BogDB palace path is required.", nameof(databasePath));
+        DatabasePath = databasePath == ":memory:" || databasePath == ":shared:"
+            ? databasePath
+            : Path.GetFullPath(databasePath);
         _embedder = embedder ?? MemoryEmbedderFactory.CreateDefault();
-        _database = BogDatabase.Open(DatabasePath);
+        _ownsDatabase = ownsDatabase;
         new VectorExtension().Load(_database);
         _ftsExtension = new FtsExtension();
         _ftsExtension.Load(_database);
@@ -331,10 +364,18 @@ public sealed class BogDbMemoryStore : IMemoryStore
         {
             if (_disposed) return;
             _connection.Dispose();
-            _database.Dispose();
+            if (_ownsDatabase) _database.Dispose();
             _embedder.Dispose();
             _disposed = true;
         }
+    }
+
+    private static (BogDatabase Database, string DatabasePath) OpenOwned(string databasePath)
+    {
+        if (string.IsNullOrWhiteSpace(databasePath))
+            throw new ArgumentException("A BogDB palace path is required.", nameof(databasePath));
+        var fullPath = Path.GetFullPath(databasePath);
+        return (BogDatabase.Open(fullPath), fullPath);
     }
 
     private void EnsureSchema()

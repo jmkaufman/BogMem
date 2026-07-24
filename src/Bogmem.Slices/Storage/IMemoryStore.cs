@@ -35,9 +35,9 @@ public sealed record MemoryStoreStatus(
     string EmbeddingModel);
 
 /// <summary>
-/// Product-facing storage boundary. Unlike the parity-only IAnnIndex seam this
-/// owns complete drawer records and their lifecycle, so persistence backends
-/// can be swapped without leaking a vendor result shape into MCP or the CLI.
+/// Product-facing storage boundary for complete drawer records and their
+/// lifecycle. Persistence backends can be swapped without leaking a vendor
+/// result shape into MCP or the CLI.
 /// </summary>
 public interface IMemoryStore : IDisposable
 {

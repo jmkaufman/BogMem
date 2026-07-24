@@ -24,6 +24,14 @@
       "rule": "EXACT",
       "reason": "covered_by_golden",
       "slice": "S9"
+    },
+    {
+      "test_id": "mcp_streamable_http",
+      "module": "mcp",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "stateless JSON response mode",
+      "slice": "S9"
     }
   ]
 }

@@ -1,8 +1,12 @@
 # BogMem
 
 BogMem is a .NET 10, local-first memory store derived from MemPalace. It now
-contains both the frozen compatibility corpus and a first usable product path:
-verbatim drawers persisted in BogDB, searchable from the CLI or over MCP.
+contains both the frozen compatibility corpus and two usable product paths:
+hybrid-searchable drawers and weighted temporal graph memory, both persisted
+in BogDB.
+
+See the [changelog](CHANGELOG.md) for release history and work planned for the
+next preview.
 
 ## Quick start
 
@@ -12,7 +16,7 @@ offline. Set `BOGMEM_MODEL_CACHE` to choose the cache directory.
 
 ```bash
 # From a source checkout. Uses ~/.bogmem/palace unless --palace is supplied.
-dotnet run --project src/Bogmem.Cli -- init
+dotnet run --project src/Bogmem.Cli -- init --name my-project-memory
 
 dotnet run --project src/Bogmem.Cli -- add \
   --wing myproject \
@@ -31,7 +35,7 @@ install it from the checkout:
 ```bash
 dotnet pack src/Bogmem.Cli -c Release -o ./artifacts/packages
 dotnet tool install --global BogMem.Tool \
-  --version 0.1.0-preview.1 \
+  --version 0.1.0-preview.3 \
   --add-source ./artifacts/packages
 
 bogmem --help
@@ -45,9 +49,27 @@ Run the persistent MCP server over newline-delimited JSON-RPC on stdio:
 dotnet run --project src/Bogmem.Cli -- mcp --palace ~/.bogmem/palace
 ```
 
-The functional MCP path currently backs status, taxonomy/listing, project
-mining, search, duplicate checks, and drawer CRUD with BogDB. Parity-only tool
-definitions stay in the compatibility harness but are not advertised by the
+For FTT, services, and other independently managed processes, run the same MCP
+surface over stateless Streamable HTTP:
+
+```bash
+export BOGMEM_MCP_TOKEN="$(openssl rand -hex 32)"
+dotnet run --project src/Bogmem.Cli -- mcp \
+  --palace ~/.bogmem/palace \
+  --transport http \
+  --listen http://127.0.0.1:7079
+```
+
+The MCP endpoint is `POST /mcp` and liveness is `GET /healthz`. The server
+defaults to loopback, validates browser origins, and requires bearer
+authentication for non-loopback listeners. See
+[`docs/mcp-http.md`](docs/mcp-http.md) for the FTT request contract, security
+settings, and a copyable client exchange.
+
+Each live MCP process is bound to one persisted palace runtime. It exposes
+status, taxonomy/listing, project mining, search, duplicate checks, drawer CRUD,
+and temporal actor-graph observation and recall. Compatibility-only tool
+definitions remain available to corpus replay but are not advertised by the
 live server.
 
 ### Project mining
@@ -90,12 +112,25 @@ older BogMem schema are protected.
 
 See [`samples/`](samples/README.md) for copyable CLI automation, a generic MCP
 host configuration, a runnable embedded .NET lifecycle, and a molecule
-capability retrieval API:
+capability retrieval API. The actor-graph sample shows the separate graph
+memory package:
 
 ```bash
 dotnet run --project samples/Bogmem.Quickstart
 dotnet run --project samples/Bogmem.MoleculeApi -- --demo
+dotnet run --project samples/Bogmem.ActorGraph
 ```
+
+Applications that embed a palace directly can reference the runtime package:
+
+```xml
+<PackageReference Include="BogMem.Slices" Version="0.1.0-preview.3" />
+```
+
+`BogMem.Slices` exposes `PalaceRuntime`, drawer storage and recall, project
+mining, the palace registry, Coliseum recall, and the transport-neutral MCP
+dispatcher. `BogMem.Graph` remains the smaller package for applications that
+only need actor/co-activity graph memory.
 
 The frozen parity layer is evidence about the port, not an endorsement of every
 MemPalace behavior. Product APIs may correct inherited bugs when the divergence
@@ -104,7 +139,7 @@ is tested and documented; see
 
 ### Retrieval status
 
-The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.3.1 maintains a
+The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.4.0 maintains a
 cosine HNSW index and a full-text BM25 index across commits, deletes, and
 reopen. BogMem combines their scores with the MemPalace-compatible 0.6/0.4
 weighting. Vector candidates come from the same 384-dimensional
@@ -123,10 +158,102 @@ also serve scoped wing/room/source searches and source-replacement deletes.
 
 No Chroma process or Chroma package is used by the product path.
 
+### Graph memory
+
+`BogMem.Graph` is a reusable library for actor/co-activity memory. An upstream
+workflow supplies explicit, stable `CoActivityObservation` values; BogMem does
+not guess entities or relationships from arbitrary files. The same observation
+contract supports an in-memory fixed window and durable BogDB evidence:
+
+```csharp
+using Bogmem.Graph;
+
+var start = DateTimeOffset.UtcNow;
+var window = new ActorGraphWindow(start, start.AddMinutes(15));
+window.Observe(new(
+    "transfer-burst:42",
+    start.AddMinutes(1),
+    ["account-a", "account-b", "account-c"],
+    Weight: 2,
+    Context: "shared-endpoint"));
+
+var graph = window.Snapshot(minimumEdgeWeight: 0.5);
+var communities = new LeidenCommunityDetector().Detect(graph);
+var neighbors = graph.Neighbors("account-a");
+```
+
+Each observation is replay-safe. A multi-actor event projects to weighted,
+undirected actor pairs, while `BogDbActorGraphStore` retains the event and its
+participation edges rather than persisting only a lossy aggregate. Window
+updates are thread-safe and fan-out is bounded by default because pair
+projection grows quadratically.
+
+Community detection is reported as `leiden-deterministic-v1`: modularity local
+moving, connected-community refinement, and multilevel aggregation with stable
+ordering. It fixes the disconnected-community failure mode of naive Louvain,
+but its deterministic assignments are not promised to match a stochastic
+Leiden implementation bit for bit. See
+[`docs/graph-memory.md`](docs/graph-memory.md) for the model and integration
+boundary.
+
+### Palace runtime and MCP
+
+Every product command now opens a `PalaceRuntime`: one owner for one BogDB
+database, one stable palace manifest, and the drawer and graph capabilities
+inside it. `bogmem init --name NAME` persists an immutable palace ID and name;
+subsequent status and MCP results include that ID so a router can detect a
+misdirected request.
+
+The runtime MCP surface adds:
+
+- `bogmem_palace_status`
+- `bogmem_graph_observe`
+- `bogmem_graph_neighbors`
+- `bogmem_graph_traverse`
+- `bogmem_graph_communities`
+
+`bogmem_graph_observe` accepts optional FTT lineage (`source`, `workflow_id`,
+`run_id`, `artifact_id`, and `signal_type`) as part of its idempotency
+fingerprint. Supplying `palace_id` on graph calls acts as a routing guard. Each
+MCP process still serves exactly one palace. Stdio and Streamable HTTP share
+the same dispatcher and tool catalog.
+
+### Palace registry
+
+The durable registry is the first Coliseum primitive. A Coliseum is BogMem's
+multi-palace layer: it maps a stable palace ID and unique name to an independent
+palace path without merging the underlying stores:
+
+```bash
+bogmem registry register --palace /data/palaces/social-signals
+bogmem registry list
+bogmem registry resolve social-signals
+```
+
+Re-registering a moved palace repairs its path without changing its identity.
+Programmatic `OpenPalace` routing verifies the manifest ID before returning a
+runtime, preventing a stale path from serving the wrong memory.
+
+Read-only cross-palace recall is available through the CLI or a registry-bound
+MCP service:
+
+```bash
+bogmem recall "where was token rotation decided?" --limit 20
+bogmem mcp --registry ~/.bogmem/registry.json
+```
+
+Coliseum recall preserves palace provenance and local ranking metadata; missing
+palaces are reported as partial failures. Graph-neighbor recall is available
+through `recall-neighbors` and `bogmem_graph_recall_neighbors`. No cross-palace
+edges are created. Process supervision remains a later Coliseum layer. See
+[`docs/palace-registry.md`](docs/palace-registry.md) and
+[`docs/cross-palace-recall.md`](docs/cross-palace-recall.md).
+
 ## Compatibility suite
 
-The solution also contains the reusable golden-corpus harness and compatibility
-slices from the ASE porting effort.
+The test suite and `bogmem parity` command replay the frozen golden corpus from
+the ASE porting effort. Compatibility support is kept out of the product
+runtime dependency graph.
 
 Spellchecking is deterministic across Windows, macOS, and Linux. BogMem embeds
 the FreeBSD-maintained `web2` corpus, derived from *Webster's Second
