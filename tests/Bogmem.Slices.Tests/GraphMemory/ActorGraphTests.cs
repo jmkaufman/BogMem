@@ -85,6 +85,11 @@ public static class ActorGraphTests
                 TestSupport.AssertTrue(
                     !store.Observe(new("one", start.AddMinutes(1), ["acct-b", "acct-a"], 1.25, "transfer")),
                     "normalized durable replay");
+
+                var liveFirstHour = store.Snapshot(start, start.AddHours(1));
+                TestSupport.AssertEqual(2, liveFirstHour.Actors.Count, "live participant count");
+                TestSupport.AssertEqual(1, liveFirstHour.Edges.Count, "live edge count");
+
                 store.Observe(new("later", start.AddHours(2), ["acct-a", "acct-c"], 4));
             }
 

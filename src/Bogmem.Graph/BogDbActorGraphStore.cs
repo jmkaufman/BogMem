@@ -145,11 +145,15 @@ public sealed class BogDbActorGraphStore : IDisposable
 
                 foreach (var actorId in normalized.ActorIds)
                 {
-                    _connection.UpsertRelationshipById(
-                        ParticipationTable,
-                        actorId,
-                        normalized.Id,
-                        []);
+                    QueryOrThrow(
+                        $"MATCH (a:{ActorTable} {{id:$actorId}}), " +
+                        $"(o:{ObservationTable} {{id:$observationId}}) " +
+                        $"MERGE (a)-[:{ParticipationTable}]->(o)",
+                        new Dictionary<string, object?>
+                        {
+                            ["actorId"] = actorId,
+                            ["observationId"] = normalized.Id,
+                        });
                 }
             });
             return true;

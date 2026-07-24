@@ -107,7 +107,7 @@ is tested and documented; see
 
 ### Retrieval status
 
-The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.3.1 maintains a
+The current retrieval mode is `bogdb-hnsw-bm25-hybrid`: BogDB 1.3.2 maintains a
 cosine HNSW index and a full-text BM25 index across commits, deletes, and
 reopen. BogMem combines their scores with the MemPalace-compatible 0.6/0.4
 weighting. Vector candidates come from the same 384-dimensional
