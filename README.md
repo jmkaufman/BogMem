@@ -183,8 +183,24 @@ The runtime MCP surface adds:
 `bogmem_graph_observe` accepts optional FTT lineage (`source`, `workflow_id`,
 `run_id`, `artifact_id`, and `signal_type`) as part of its idempotency
 fingerprint. Supplying `palace_id` on graph calls acts as a routing guard. Each
-MCP process still serves exactly one palace; a future Coliseum supervisor owns
-the registry and lifecycle of many such processes. See
+MCP process still serves exactly one palace.
+
+### Palace registry
+
+The durable registry is the first Coliseum primitive. It maps a stable palace
+ID and unique name to an independent palace path:
+
+```bash
+bogmem registry register --palace /data/palaces/undertow
+bogmem registry list
+bogmem registry resolve undertow
+```
+
+Re-registering a moved palace repairs its path without changing its identity.
+Programmatic `OpenPalace` routing verifies the manifest ID before returning a
+runtime, preventing a stale path from serving the wrong memory. Process
+supervision and federated recall remain a later Coliseum layer. See
+[`docs/palace-registry.md`](docs/palace-registry.md) and
 [`docs/palace-runtime.md`](docs/palace-runtime.md).
 
 ## Compatibility suite

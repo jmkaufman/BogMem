@@ -50,6 +50,14 @@
       "slice": "P6"
     },
     {
+      "test_id": "palace_registry",
+      "module": "PalaceRegistry",
+      "status": "pass",
+      "rule": "PRODUCT",
+      "reason": "durable palace identity-to-path routing catalog",
+      "slice": "P7"
+    },
+    {
       "test_id": "bogdb_memory_store",
       "module": "BogDbMemoryStore",
       "status": "pass",

@@ -87,6 +87,37 @@ public static class CliExitCodeTests
                     failures.Add("product status stable palace ID");
             }
 
+            var registryPath = Path.Combine(scratch, "registry", "palaces.json");
+            var register = InvokeCapture([
+                "registry", "register",
+                "--palace", productPalace,
+                "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "registry register -> 0", 0, register.Code);
+            using (var registerJson = JsonDocument.Parse(register.Stdout))
+                if (registerJson.RootElement.GetProperty("palaceId").GetString() != initializedPalaceId)
+                    failures.Add("registry register palace ID");
+
+            var registryList = InvokeCapture([
+                "registry", "list", "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "registry list -> 0", 0, registryList.Code);
+            using (var listJson = JsonDocument.Parse(registryList.Stdout))
+            {
+                if (listJson.RootElement.GetProperty("schemaVersion").GetInt32() != 1)
+                    failures.Add("registry schema version");
+                if (listJson.RootElement.GetProperty("palaces").GetArrayLength() != 1)
+                    failures.Add("registry list count");
+            }
+
+            var resolve = InvokeCapture([
+                "registry", "resolve", "cli-test-palace", "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "registry resolve -> 0", 0, resolve.Code);
+            using (var resolveJson = JsonDocument.Parse(resolve.Stdout))
+                if (resolveJson.RootElement.GetProperty("databasePath").GetString() != Path.GetFullPath(productPalace))
+                    failures.Add("registry resolve path");
+
             var search = InvokeCapture(["search", "durable BogDB memory", "--palace", productPalace], TestKit.Root);
             Expect(failures, "product search -> 0", 0, search.Code);
             using (var searchJson = JsonDocument.Parse(search.Stdout))
@@ -157,6 +188,16 @@ public static class CliExitCodeTests
             foreach (var module in ParityRunner.KnownModules)
                 Expect(failures, $"parity {module} -> 0", 0,
                     Invoke(["parity", module, "--report", Path.Combine(scratch, $"pr_{module}.json")], TestKit.Root));
+
+            var unregister = InvokeCapture([
+                "registry", "unregister", initializedPalaceId, "--registry", registryPath
+            ], TestKit.Root);
+            Expect(failures, "registry unregister -> 0", 0, unregister.Code);
+            Expect(failures, "registry unregister missing -> 1", 1,
+                Invoke([
+                    "registry", "unregister", initializedPalaceId,
+                    "--registry", registryPath
+                ], TestKit.Root));
         }
         finally
         {

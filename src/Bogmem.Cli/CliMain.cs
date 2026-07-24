@@ -40,11 +40,17 @@ public static class CliMain
                   get drawer-id [--palace path]
                   delete drawer-id [--palace path]
                   mcp [--palace path] [--read-only]
+                  registry register --palace path [--name palace-name] [--registry path]
+                  registry list [--registry path]
+                  registry resolve palace-id-or-name [--registry path]
+                  registry unregister palace-id-or-name [--registry path]
                   parity [module|all] [--golden path] [--report path]
                   --help
 
                 Palace path: --palace, BOGMEM_PALACE_PATH, MEMPALACE_PALACE_PATH,
                              or ~/.bogmem/palace
+                Registry path: --registry, BOGMEM_REGISTRY_PATH,
+                               or ~/.bogmem/registry.json
 
                 Mining config: mempalace.yaml (or .yml; legacy mempal.yaml/.yml also works).
                                --wing and --room override project configuration.
@@ -260,9 +266,80 @@ public static class CliMain
                 RequireNoPositionals(parsed);
                 return RunMcp(palace, parsed.Flags.Contains("read-only"), stdin, stdout, stderr);
 
+            case "registry":
+                return RunRegistry(parsed, stdout, stderr, workingDirectory);
+
             default:
                 stderr.WriteLine($"Unknown command '{args[0]}'. Use --help.");
                 return 2;
+        }
+    }
+
+    private static int RunRegistry(
+        ParsedArguments parsed,
+        TextWriter stdout,
+        TextWriter stderr,
+        string workingDirectory)
+    {
+        if (parsed.Positionals.Count == 0)
+            throw new ArgumentException(
+                "registry requires one of: register, list, resolve, unregister");
+
+        var command = parsed.Positionals[0];
+        var registryPath = ResolveRegistryPath(
+            parsed.Options.GetValueOrDefault("registry"),
+            workingDirectory);
+        var registry = new PalaceRegistry(registryPath);
+        switch (command)
+        {
+            case "register":
+            {
+                ValidateOptions(parsed, ["registry", "palace", "name"]);
+                if (parsed.Positionals.Count != 1)
+                    throw new ArgumentException("registry register accepts no positional palace selector");
+                var palacePath = ResolvePalacePath(
+                    parsed.Options.GetValueOrDefault("palace"),
+                    workingDirectory);
+                using var runtime = PalaceRuntime.Open(
+                    palacePath,
+                    parsed.Options.GetValueOrDefault("name"));
+                WriteJson(stdout, registry.Register(runtime));
+                return 0;
+            }
+
+            case "list":
+                ValidateOptions(parsed, ["registry"]);
+                if (parsed.Positionals.Count != 1)
+                    throw new ArgumentException("registry list accepts no palace selector");
+                WriteJson(stdout, registry.Snapshot());
+                return 0;
+
+            case "resolve":
+                ValidateOptions(parsed, ["registry"]);
+                if (parsed.Positionals.Count != 2)
+                    throw new ArgumentException(
+                        "registry resolve requires exactly one palace ID or name");
+                WriteJson(stdout, registry.Resolve(parsed.Positionals[1]));
+                return 0;
+
+            case "unregister":
+                ValidateOptions(parsed, ["registry"]);
+                if (parsed.Positionals.Count != 2)
+                    throw new ArgumentException(
+                        "registry unregister requires exactly one palace ID or name");
+                if (!registry.Unregister(parsed.Positionals[1], out var removed))
+                {
+                    stderr.WriteLine(
+                        $"Palace not registered: {parsed.Positionals[1]}");
+                    return 1;
+                }
+                WriteJson(stdout, new { removed = true, palace = removed });
+                return 0;
+
+            default:
+                throw new ArgumentException(
+                    $"Unknown registry command '{command}'. " +
+                    "Use register, list, resolve, or unregister.");
         }
     }
 
@@ -330,6 +407,15 @@ public static class CliMain
             return Path.GetFullPath(configured, workingDirectory);
         var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Path.Combine(profile, ".bogmem", "palace");
+    }
+
+    private static string ResolveRegistryPath(string? option, string workingDirectory)
+    {
+        var configured = option
+            ?? Environment.GetEnvironmentVariable(PalaceRegistry.EnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(configured))
+            return Path.GetFullPath(configured, workingDirectory);
+        return PalaceRegistry.DefaultPath;
     }
 
     private static string RequiredOption(ParsedArguments parsed, string name, bool trim = true)

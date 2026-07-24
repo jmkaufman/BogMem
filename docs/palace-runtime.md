@@ -71,15 +71,22 @@ weight, context, or lineage is rejected.
 FTT owns extraction, normalization, routing, retry, and workflow semantics.
 BogMem owns validation, idempotent persistence, temporal projection, and recall.
 
-## Coliseum boundary
+## Palace registry and Coliseum boundary
 
-The next layer can remain outside the palace runtime:
+BogMem now provides the first layer outside the palace runtime:
 
-1. Maintain a registry from palace ID to path and MCP process.
-2. Start, stop, and health-check each palace independently.
-3. Route an FTT observation envelope to one or more palace IDs.
-4. Aggregate read-only results while preserving palace provenance.
+1. `PalaceRegistry` maintains an atomic catalog from palace ID or unique name
+   to its current path.
+2. Routed opens verify that the manifest at that path still owns the expected
+   palace ID.
+
+The remaining Coliseum supervisor can:
+
+1. Start, stop, and health-check each palace independently.
+2. Route an FTT observation envelope to one or more palace IDs.
+3. Aggregate read-only results while preserving palace provenance.
 
 BogMem should not introduce cross-palace edges inside an individual database.
 Federation belongs to the Coliseum because it must retain which palace supplied
-each result.
+each result. See [`palace-registry.md`](palace-registry.md) for the registry
+contract and CLI.
